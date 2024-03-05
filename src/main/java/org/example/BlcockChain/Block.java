@@ -1,4 +1,4 @@
-package org.example;
+package org.example.BlcockChain;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -6,9 +6,7 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import org.bouncycastle.crypto.Digest;
-import org.bouncycastle.crypto.digests.SHA1Digest;
 import org.bouncycastle.crypto.digests.SHA256Digest;
-import org.bouncycastle.util.encoders.Hex;
 
 public class Block {
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
