@@ -23,6 +23,7 @@ public class Block {
     public Block(int nonce) {
         this.transactions = new ArrayList<>();
         this.nonce = nonce;
+        this.timestamp = new Date().getTime();
     }
 
     // Getters and setters
