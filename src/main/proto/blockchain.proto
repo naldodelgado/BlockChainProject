@@ -5,36 +5,31 @@ option java_package = "kademlia_public_ledger";
 option java_outer_classname = "PL";
 
 service Services {
-    rpc Ping (Node) returns (PingResponse) {}
+    rpc Ping (Node) returns (Node) {}
     rpc Store (Data) returns (Node) {}
     rpc FindNode (Node) returns (KBucket) {}
     rpc FindValue (Key) returns (Data) {}
 }
 
 message KBucket {
-    string sender = 1;
-    string receiver = 2;
-    repeated string nodes = 3;
-    string com_key = 4;
+    Node sender = 1;
+    repeated Node nodes = 2;
+    string com_key = 3;
 }
 
 message Data {
-    string key = 1;
-    string value = 2;
-
+    Node sender = 1;
+    bytes key = 2;
+    string value = 3;
 }
 
 message Node {
-    string id = 1;
-    string ip = 2;
+    bytes id = 1;
+    bytes ip = 2;
     int32 port = 3;
 }
 
-message PingResponse {
-    string sender = 1;
-    string receiver = 2;
-}
-
 message Key {
-    string key = 1;
+    Node sender = 1;
+    bytes key = 2;
 }
