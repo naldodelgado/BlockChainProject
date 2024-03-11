@@ -42,15 +42,15 @@ public class Auction {
     }
 
     public Boolean verifyAuction(){
-        return false;
-        /*return  isHashValid()
+        //return false;
+        return  isHashValid()
                 && Wallet.verifySignature(this.signature, this.hash, this.sellerPublicKey, logger)
-                && Wallet.checkAddress(this.sellerPublicKey, this.idSeller);*/
+                && Wallet.checkAddress(this.sellerPublicKey, this.idSeller);
     }
     
     private String getHashToBeSigned() {
-        return "";
-        //return Utils.getHash("" + this.idItem + this.idSeller + this.minAmount + this.minIncrement + this.fee + this.timeout + this.sellerPublicKey.hashCode());
+        //return "";
+        return Utils.getHash("" + this.idItem + this.idSeller + this.minAmount + this.minIncrement + this.fee + this.timeout + this.sellerPublicKey.hashCode());
     }
 
     private Boolean isHashValid() {
@@ -61,6 +61,9 @@ public class Auction {
         else return true;
     }
 
+
+
+    //Getters
     public PublicKey getSellerPublicKey() {
         return sellerPublicKey;
     }

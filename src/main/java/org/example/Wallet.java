@@ -2,6 +2,7 @@ package org.example;
 
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -11,9 +12,12 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.logging.Logger;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.example.Auction.Utils;
 
 public class Wallet {
 
@@ -61,6 +65,53 @@ public class Wallet {
         }
     }
 
+     public static PublicKey getPublicKeyFromBytes(byte[] bKey){
+        X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(bKey);
+        try {
+            KeyFactory keyFactory = KeyFactory.getInstance("EC", new BouncyCastleProvider());
+            return keyFactory.generatePublic(pubKeySpec);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
+        logger.warning("Couldn't retrieve public key from bytes");
+        return null;
+    }
+    public static boolean checkAddress(PublicKey publicKey, String address){
+        if(getAddressFromPubKey(publicKey).equals(address))
+            return true;
+        else {
+            logger.warning("public key doesn't correspond to address !");
+            return false;
+        }
+    }
+    public static String getAddressFromPubKey(PublicKey publicKey){
+        return Utils.bytesToHexString(Utils.getHash(publicKey.getEncoded()));
+    }
+
+    @SuppressWarnings("finally")
+    public static Boolean verifySignature(byte[] signature, String hash, PublicKey publicKey, Logger logger){
+        if(signature==null){
+            logger.warning("Hash is not signed");
+            return false;
+        }
+        try {
+            Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA");
+            ecdsaVerify.initVerify(publicKey);
+            ecdsaVerify.update(Utils.hexStringToBytes(hash));
+            ecdsaVerify.verify(signature);
+        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
+            logger.severe("Signatures don't match");
+            e.printStackTrace();
+            return false;
+        } finally{
+            //careful errors that don't include the ones in the catch will go unnoticed
+            return true;
+        }
+    }
+
+
+
+    //Getters
     public PrivateKey getPrivateKey() {
         return privateKey;
     }
