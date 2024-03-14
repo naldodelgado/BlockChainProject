@@ -28,7 +28,7 @@ public class Kademlia {
         byte[] id = createSHA1Hash(Arrays.toString(Inet4Address.getLocalHost().getAddress()) + System.currentTimeMillis() + Math.random());
         assert id.length == 20;
 
-        routeTable = new RouteTable(id);
+        routeTable = new RouteTable(id,logger);
         server = ServerBuilder.forPort(port).addService(new KademliaAPI(routeTable)).build();
     }
 

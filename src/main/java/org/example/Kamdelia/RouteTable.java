@@ -7,6 +7,7 @@ import io.grpc.ManagedChannelBuilder;
 import kademlia_public_ledger.KBucket;
 import kademlia_public_ledger.Node;
 import kademlia_public_ledger.ServicesGrpc;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -16,24 +17,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class RouteTable {
-
     private final byte[] id;
     private static final int K = 20;
-    private final Queue<KNode>[] kBuckets;
-    private final Queue<ScheduledFuture<?>>[] kRefresh;
+    private final Queue<Pair<KNode,ScheduledFuture<?>>>[] kBuckets;
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+    
+    private final Logger log;
 
-    public RouteTable(byte[] id) {
+    public RouteTable(byte[] id, Logger logger) {
+        log = Logger.getLogger(RouteTable.class.getName());
         this.id = id;
         kBuckets = new Queue[id.length * 8 - 1];
-        kRefresh = new Queue[id.length * 8 - 1];
-
         for (int i = 0; i < K; i++) {
             kBuckets[i] = new LinkedBlockingQueue<>(Math.min(K, 2 ^ i));
-            kRefresh[i] = new LinkedBlockingQueue<>(Math.min(K, 2 ^ i));
         }
     }
 
@@ -55,8 +55,10 @@ public class RouteTable {
             try {
                 Channel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(Kademlia.genesisIP).getHostAddress(), 5000).usePlaintext().build();
                 ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
+                log.info("Finding nodes in the network");
 
                 KBucket response = stub.findNode(Node.newBuilder().setId(ByteString.copyFrom(id)).build());
+                log.info(String.format("Found %d nodes in the network", response.getNodesCount()));
 
                 List<Node> nodes = response.getNodesList();
                 add(nodes);
@@ -81,7 +83,7 @@ public class RouteTable {
         if (index < distance.length()) {
             synchronized (kBuckets[index]){
                 if (kBuckets[index].size() < Math.min(K, 20)) {
-                    return kBuckets[index].stream().map(KNode::toNode).collect(Collectors.toCollection(ArrayList::new));
+                    return kBuckets[index].stream().map(Pair::getLeft).map(KNode::toNode).collect(Collectors.toCollection(ArrayList::new));
                 }
             }
         }
@@ -103,12 +105,14 @@ public class RouteTable {
     public void add(List<Node> nodes) {
         KNode[] kNodes = nodes.stream().map(KNode::fromNode).toArray(KNode[]::new);
 
+
         for (KNode kNode : kNodes){
             add(kNode);
         }
     }
 
     public void add(KNode kNode) {
+        log.info(String.format("Adding node %s to the route table", Arrays.toString(kNode.getIp())));
         byte[] distance = distance(kNode.getId(), id);
         int index = 0;
         BitSet bitSet = BitSet.valueOf(distance);
@@ -121,16 +125,14 @@ public class RouteTable {
     }
 
      public void add(KNode kNode, int index) {
-        if (kBuckets[index].contains(kNode)) {
+        if (kBuckets[index].stream().map(Pair::getLeft).anyMatch(k -> Arrays.equals(k.getId(), kNode.getId()))){
             refresh(kNode, index);
         }else {
             synchronized (kBuckets[index]){
                 if (kBuckets[index].size() >= Math.min(K, 20)) {
-                    kBuckets[index].remove();
-                    kRefresh[index].remove().cancel(false);
+                    kBuckets[index].remove().getRight().cancel(false);
                 }
-                kBuckets[index].add(kNode);
-                kRefresh[index].add(executorService.schedule(() -> refresh(kNode, index), 3600, java.util.concurrent.TimeUnit.SECONDS));
+                kBuckets[index].add(Pair.of(kNode, executorService.schedule(() -> refresh(kNode, index), 3600, java.util.concurrent.TimeUnit.SECONDS)));
             }
         }
     }
@@ -151,12 +153,10 @@ public class RouteTable {
             );
 
             synchronized (kBuckets[index]){
-                if (kBuckets[index].contains(node)) {
-                    kBuckets[index].remove(node);
+                if (kBuckets[index].stream().map(Pair::getLeft).anyMatch(kNode -> Arrays.equals(kNode.getId(), node.getId()))){
+                    kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId()));
                     //TODO: this is wrong
-                    kRefresh[index].remove();
-                    kBuckets[index].add(node);
-                    kRefresh[index].add(executorService.schedule( () -> refresh(node, kBuckets.length - 1), 3600, java.util.concurrent.TimeUnit.SECONDS));
+                    kBuckets[index].add(Pair.of(node, executorService.schedule( () -> refresh(node, index), 3600, java.util.concurrent.TimeUnit.SECONDS)));
                 }
             }
 
