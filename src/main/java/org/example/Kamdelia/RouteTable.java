@@ -4,6 +4,8 @@ import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
+import kademlia_public_ledger.Data;
 import kademlia_public_ledger.KBucket;
 import kademlia_public_ledger.Node;
 import kademlia_public_ledger.ServicesGrpc;
@@ -25,11 +27,10 @@ public class RouteTable {
     private static final int K = 20;
     private final Queue<Pair<KNode,ScheduledFuture<?>>>[] kBuckets;
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-    
     private final Logger log;
 
     public RouteTable(byte[] id, Logger logger) {
-        log = Logger.getLogger(RouteTable.class.getName());
+        log = logger;
         this.id = id;
         kBuckets = new Queue[id.length * 8 - 1];
         for (int i = 0; i < K; i++) {
@@ -75,12 +76,9 @@ public class RouteTable {
 
     // doesn't mutate the state of the route table, so it's safe to call from multiple threads
     public Iterable<Node> findNode(ByteString id) {
-        var distance =  BitSet.valueOf(distance(id.toByteArray(), this.id));
-        int index = 0;
-        while (index < distance.length() && !distance.get(index)) {
-            index++;
-        }
-        if (index < distance.length()) {
+        int index = BitSet.valueOf(distance(id.toByteArray(), this.id)).nextSetBit(0) - 1;
+
+        if (index > -1) {
             synchronized (kBuckets[index]){
                 if (kBuckets[index].size() < Math.min(K, 20)) {
                     return kBuckets[index].stream().map(Pair::getLeft).map(KNode::toNode).collect(Collectors.toCollection(ArrayList::new));
@@ -89,37 +87,29 @@ public class RouteTable {
         }
 
         try {
-            return Collections.singleton(
-                Node.newBuilder()
-                    .setId(ByteString.copyFrom(id.toByteArray()))
-                    .setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress()))
-                    //TODO: set port
-                    .setPort(5000)
-                    .build()
-            );
+            if (index == -1)
+                return Collections.singleton(
+                    Node.newBuilder()
+                        .setId(ByteString.copyFrom(this.id))
+                        .setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress()))
+                        .setPort(5000)
+                        .build());
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
         }
+
+        return Collections.emptyList();
     }
 
     public void add(List<Node> nodes) {
-        KNode[] kNodes = nodes.stream().map(KNode::fromNode).toArray(KNode[]::new);
-
-
-        for (KNode kNode : kNodes){
-            add(kNode);
-        }
+        nodes.stream().map(KNode::fromNode).forEach(this::add);
     }
 
     public void add(KNode kNode) {
         log.info(String.format("Adding node %s to the route table", Arrays.toString(kNode.getIp())));
-        byte[] distance = distance(kNode.getId(), id);
-        int index = 0;
-        BitSet bitSet = BitSet.valueOf(distance);
-        while (index < distance.length && !bitSet.get(index)) {
-            index++;
-        }
-        if (index < distance.length) {
+
+        int index = BitSet.valueOf(distance(kNode.getId(), id)).nextSetBit(0) - 1;
+        if (index > -1) {
             add(kNode, index);
         }
     }
@@ -140,17 +130,24 @@ public class RouteTable {
     private void refresh(KNode node, int index) {
 
         try {
-            ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).usePlaintext().build();
+            log.info(String.format("Refreshing node %s %s", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
+            ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
             ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
 
-            stub.ping(
-                Node.newBuilder()
-                    .setId(ByteString.copyFrom(id))
-                    //TODO: set port
-                    .setPort(5000)
-                    .setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress()))
-                    .build()
-            );
+            try {
+                stub.ping(
+                        Node.newBuilder()
+                                .setId(ByteString.copyFrom(id))
+                                //TODO: set port
+                                .setPort(5000)
+                                .setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress()))
+                                .build()
+                );
+            } catch (StatusRuntimeException e) {
+                log.info(String.format("Node %s %s did not respond to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
+                kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId()));
+                return;
+            }
 
             synchronized (kBuckets[index]){
                 if (kBuckets[index].stream().map(Pair::getLeft).anyMatch(kNode -> Arrays.equals(kNode.getId(), node.getId()))){
@@ -165,13 +162,66 @@ public class RouteTable {
         }
     }
 
-    private int getBucketIndex(byte[] distance) {
-        int index = 0;
-        BitSet bitSet = BitSet.valueOf(distance);
-        while (index < distance.length && !bitSet.get(index)) {
-            index++;
+
+    public byte[] getValue(byte[] key) {
+        byte[] distance = distance(key, id);
+        if (BitSet.valueOf(distance).nextSetBit(0) == -1) {
+            return null;
+            //TODO: get value from local storage
         }
-        return index;
+
+        try {
+            log.info(String.format("Finding value for key %s", Arrays.toString(key)));
+            int index = BitSet.valueOf(distance(key, id)).nextSetBit(0) - 1;
+            List<Node> nodes = new ArrayList<>();
+            if (index > -1) {
+                synchronized (kBuckets[index]){
+                    if (!kBuckets[index].isEmpty()) {
+                        nodes = kBuckets[index].stream().map(Pair::getLeft).sorted( (a, b) -> {
+                            byte[] aDistance = distance(a.getId(), key);
+                            byte[] bDistance = distance(b.getId(), key);
+
+                            for (int i = 0; i < aDistance.length; i++) {
+                                if (aDistance[i] != bDistance[i]) {
+                                    return aDistance[i] - bDistance[i];
+                                }
+                            }
+                            return 0;
+                        }).map(KNode::toNode).collect(Collectors.toList());
+                    }
+                }
+            }
+            Node thisNode = Node.newBuilder().setId(ByteString.copyFrom(id)).setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress())).setPort(5000).build();
+
+            while (!nodes.isEmpty()) {
+                log.info(String.format("Retrieving data with key %s from node %s %s", Arrays.toString(key), Arrays.toString(nodes.get(0).getId().toByteArray()), Arrays.toString(nodes.get(0).getIp().toByteArray())));
+                ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(nodes.get(0).getIp().toByteArray()).getHostAddress(), nodes.get(0).getPort()).build();
+                ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
+
+                Data value;
+                try {
+                     value = stub.findValue(kademlia_public_ledger.Key.newBuilder().setKey(ByteString.copyFrom(key)).setSender(thisNode).build());
+                }catch (StatusRuntimeException e){
+                    log.info(String.format("Node %s did not respond to findValue", Arrays.toString(nodes.get(0).getId().toByteArray())));
+                    nodes.remove(0);
+                    continue;
+                }
+
+                if (value.getValue() != null && !value.getValue().isEmpty() && value.getKey().equals(ByteString.copyFrom(key))){
+                    log.info(String.format("Found value for key %s", Arrays.toString(key)));
+                    return value.getValue().toByteArray();
+                }
+
+                log.info(String.format("Node %s did not have value for key %s", Arrays.toString(nodes.get(0).getId().toByteArray()), Arrays.toString(key)));
+                nodes.remove(0);
+            }
+
+            log.info(String.format("No nodes had value for key %s", Arrays.toString(key)));
+        }   catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+
+        return null;
     }
 
     public void shutdown() {

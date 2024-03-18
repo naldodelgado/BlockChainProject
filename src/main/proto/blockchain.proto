@@ -20,7 +20,7 @@ message KBucket {
 message Data {
     Node sender = 1;
     bytes key = 2;
-    string value = 3;
+    bytes value = 3;
 }
 
 message Node {

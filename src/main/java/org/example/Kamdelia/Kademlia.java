@@ -59,4 +59,12 @@ public class Kademlia {
         }
     }
 
+    public void store(byte[] data) {
+
+    }
+
+    public byte[] findData(byte[] key) {
+        return null;
+    }
+
 }
