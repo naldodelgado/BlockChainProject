@@ -13,6 +13,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.logging.Logger;
 
@@ -32,6 +33,11 @@ public class Wallet {
         this.publicKey=publicKey;
     }
 
+    public Wallet() {
+        generateKeys();
+        createAddress();
+    }
+
 
     private void generateKeys() {
         try {
@@ -46,6 +52,10 @@ public class Wallet {
         } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
             e.printStackTrace();
         }
+    }
+
+    private void createAddress(){
+        this.address = getAddressFromPubKey(this.publicKey);
     }
 
     @SuppressWarnings("finally")
@@ -76,6 +86,27 @@ public class Wallet {
         logger.warning("Couldn't retrieve public key from bytes");
         return null;
     }
+
+     public static PrivateKey getPrivateKeyFromBytes(byte[] pKey){
+        PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(pKey);
+        try {
+            KeyFactory keyFactory = KeyFactory.getInstance("EC", new BouncyCastleProvider());
+            return keyFactory.generatePrivate(privateKeySpec);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
+        logger.warning("Couldn't retrieve private key from bytes");
+        return null;
+    }
+
+    public static byte[] getEncodedPublicKey(PublicKey publicKey){
+        return publicKey.getEncoded();
+    }
+
+    public static byte[] getEncodedPrivateKey(PrivateKey privateKey){
+        return privateKey.getEncoded();
+    }
+
     public static boolean checkAddress(PublicKey publicKey, String address){
         if(getAddressFromPubKey(publicKey).equals(address))
             return true;
@@ -84,6 +115,7 @@ public class Wallet {
             return false;
         }
     }
+
     public static String getAddressFromPubKey(PublicKey publicKey){
         return Utils.bytesToHexString(Utils.getHash(publicKey.getEncoded()));
     }
@@ -110,6 +142,11 @@ public class Wallet {
     }
 
 
+
+    public void printKeys(){
+        logger.info("public key:" + this.publicKey.toString());
+        logger.info("private key:" + this.privateKey.toString());
+    }
 
     //Getters
     public PrivateKey getPrivateKey() {
