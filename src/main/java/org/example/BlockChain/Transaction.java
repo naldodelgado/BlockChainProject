@@ -1,4 +1,4 @@
-package org.example.BlcockChain;
+package org.example.BlockChain;
 
 import java.io.Serializable;
 import java.util.Date;

@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.logging.Logger;
 
 public class Kademlia {
-
     private final RouteTable routeTable;
     private final Server server;
     private final Logger logger = Logger.getLogger(Kademlia.class.getName());
@@ -29,7 +28,7 @@ public class Kademlia {
         assert id.length == 20;
 
         routeTable = new RouteTable(id,logger);
-        server = ServerBuilder.forPort(port).addService(new KademliaAPI(routeTable)).build();
+        server = ServerBuilder.forPort(port).addService(new KademliaAPI(routeTable,logger)).build();
     }
 
     private byte[] createSHA1Hash(String s) {
@@ -59,7 +58,7 @@ public class Kademlia {
         }
     }
 
-    public void store(byte[] data) {
+    public void propagate(byte[] data) {
 
     }
 

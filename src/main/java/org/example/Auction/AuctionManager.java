@@ -3,11 +3,9 @@ package org.example.Auction;
 import java.security.SecureRandom;
 import java.util.Random;
 import java.util.Scanner;
-import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.example.Wallet;
-import org.example.BlcockChain.Transaction;
 
 public class AuctionManager {
 

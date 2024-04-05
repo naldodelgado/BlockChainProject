@@ -6,17 +6,20 @@ import kademlia_public_ledger.*;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
+import java.util.logging.Logger;
 
 public class KademliaAPI extends ServicesGrpc.ServicesImplBase {
+    private final RouteTable routeTable;
+    private final Logger log;
 
-    RouteTable routeTable;
-
-    public KademliaAPI(RouteTable routeTable) {
+    public KademliaAPI(RouteTable routeTable, Logger log) {
         this.routeTable = routeTable;
+        this.log = log;
     }
 
     @Override
     public void ping(Node request, StreamObserver<Node> responseObserver) {
+        log.info("Ping from " + request.getId().toStringUtf8());
         try{
             Node response = Node.newBuilder()
                     .setId(ByteString.copyFrom(routeTable.getId()))
@@ -36,6 +39,7 @@ public class KademliaAPI extends ServicesGrpc.ServicesImplBase {
     @Override
     public void store(Data request, StreamObserver<Node> responseObserver) {
         //TODO: store data
+        log.info("Store request from " + request.getSender().getId().toStringUtf8());
         Node response = Node.newBuilder()
                 .setId(ByteString.copyFrom(routeTable.getId()))
                 .build();
@@ -44,10 +48,13 @@ public class KademliaAPI extends ServicesGrpc.ServicesImplBase {
         responseObserver.onCompleted();
 
         routeTable.add(KNode.fromNode(request.getSender()));
+
+        routeTable.propagate(request.getKey().toByteArray(), request.getValue().toByteArray(), KNode.fromNode(request.getSender()));
     }
 
     @Override
     public void findNode(Node request, StreamObserver<KBucket> responseObserver) {
+        log.info("FindNode request from " + request.getId().toStringUtf8());
         KBucket response = KBucket.newBuilder()
                 .addAllNodes(routeTable.findNode(request.getId()))
                 .build();
