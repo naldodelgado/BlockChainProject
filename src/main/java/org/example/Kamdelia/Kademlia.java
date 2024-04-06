@@ -2,12 +2,15 @@ package org.example.Kamdelia;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import kademlia_public_ledger.Block;
+import kademlia_public_ledger.Transaction;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
 
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.util.Arrays;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class Kademlia {
@@ -58,9 +61,27 @@ public class Kademlia {
         }
     }
 
-    public void propagate(byte[] data) {
-
+    public void propagate(Block data) {
+        routeTable.propagate(data);
     }
+
+    public void propagate(Transaction data) {
+        routeTable.propagate(data);
+    }
+
+    public void setBlockStorageFunction(Function<Block, Boolean> blockStorageFunction) {
+        routeTable.setBlockStorageFunction(blockStorageFunction);
+    }
+
+    public void setTransactionStorageFunction(Function<Transaction, Boolean> transactionStorageFunction) {
+        routeTable.setTransactionStorageFunction(transactionStorageFunction);
+    }
+
+    public void stop() {
+        server.shutdown();
+        routeTable.shutdown();
+    }
+
 
     public byte[] findData(byte[] key) {
         return null;

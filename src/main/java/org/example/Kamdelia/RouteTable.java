@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class RouteTable {
+class RouteTable {
     private final byte[] id;
     private static final int K = 5;
     private final Queue<Pair<KNode,ScheduledFuture<?>>>[] kBuckets;

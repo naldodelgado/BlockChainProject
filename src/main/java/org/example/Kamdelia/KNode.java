@@ -3,7 +3,7 @@ package org.example.Kamdelia;
 import com.google.protobuf.ByteString;
 import kademlia_public_ledger.Node;
 
-public class KNode {
+class KNode {
     private final byte[] id;
 
     private final byte[] ip;
