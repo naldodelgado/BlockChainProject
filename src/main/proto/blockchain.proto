@@ -9,7 +9,8 @@ service Services {
     rpc StoreBlock (Block) returns (Node) {}
     rpc StoreTransaction (Transaction) returns (Node) {}
     rpc FindNode (Node) returns (KBucket) {}
-    rpc FindValue (Key) returns (Data) {}
+    rpc FindBlock (Key) returns (Block) {}
+    rpc FindTransaction (Key) returns (Transaction) {}
 }
 
 message KBucket {
