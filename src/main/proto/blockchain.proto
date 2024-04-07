@@ -6,11 +6,11 @@ option java_outer_classname = "PL";
 
 service Services {
     rpc Ping (Node) returns (Node) {}
-    rpc StoreBlock (Block) returns (Node) {}
-    rpc StoreTransaction (Transaction) returns (Node) {}
+    rpc StoreBlock (kBlock) returns (Node) {}
+    rpc StoreTransaction (kTransaction) returns (Node) {}
     rpc FindNode (Node) returns (KBucket) {}
-    rpc FindBlock (Key) returns (Block) {}
-    rpc FindTransaction (Key) returns (Transaction) {}
+    rpc FindBlock (Key) returns (kBlock) {}
+    rpc FindTransaction (Key) returns (kTransaction) {}
 }
 
 message KBucket {
@@ -19,17 +19,17 @@ message KBucket {
     string com_key = 3;
 }
 
-message Block {
+message kBlock {
     Node Sender = 1;
     bytes hash = 2;
     bytes prev_hash = 3;
-    repeated Transaction transactions = 4;
+    repeated kTransaction transactions = 4;
     bytes Nonce = 5;
     int64 timestamp = 6;
 
 }
 
-message Transaction {
+message kTransaction {
     Node senderNode = 1;
     bytes sender = 2;
     bytes receiver = 3;

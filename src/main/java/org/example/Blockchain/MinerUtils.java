@@ -1,4 +1,4 @@
-package org.example.BlockChain;
+package org.example.Blockchain;
 
 public class MinerUtils {
 

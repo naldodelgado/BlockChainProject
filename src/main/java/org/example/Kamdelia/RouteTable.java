@@ -21,8 +21,8 @@ class RouteTable {
     private final Queue<Pair<KNode,ScheduledFuture<?>>>[] kBuckets;
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
     private final Logger log;
-    private Function<Block, Boolean> blockStorageFunction;
-    private Function<Transaction, Boolean> transactionStorageFunction;
+    private Function<kBlock, Boolean> blockStorageFunction;
+    private Function<kTransaction, Boolean> transactionStorageFunction;
 
     public RouteTable(byte[] id, Logger logger) {
         log = logger;
@@ -34,6 +34,10 @@ class RouteTable {
     }
 
     public void start() {
+        if (blockStorageFunction == null || transactionStorageFunction == null) {
+            throw new IllegalStateException("BlockStorageFunction and TransactionStorageFunction must be set before starting the route table");
+        }
+
         new Thread(() -> {
             // try to fill k-buckets with nodes from the network
             try {
@@ -109,13 +113,16 @@ class RouteTable {
         }
     }
 
-    public void propagate(Block request) {
+    public void propagate(kBlock request) {
         log.info(String.format("Storing block with hash %s", Arrays.toString(request.getHash().toByteArray())));
         KNode sender = KNode.fromNode(request.getSender());
 
         int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(sender.getId(), id)).nextSetBit(0);
 
-        blockStorageFunction.apply(request);
+        if (!blockStorageFunction.apply(request)) {
+            log.info(String.format("Block with hash %s is invalid", Arrays.toString(request.getHash().toByteArray())));
+            return;
+        }
 
         IntStream.range(0, senderDistance).parallel().forEach(i -> {
             while (true) {
@@ -131,7 +138,7 @@ class RouteTable {
                     ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
                     ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
 
-                    Block block = Block.newBuilder()
+                    kBlock block = kBlock.newBuilder()
                             .setHash(request.getHash())
                             .setSender(request.getSender())
                             .setPrevHash(request.getPrevHash())
@@ -155,13 +162,16 @@ class RouteTable {
         });
     }
 
-    public void propagate(Transaction data) {
+    public void propagate(kTransaction data) {
         log.info(String.format("Storing transaction with signature %s", Arrays.toString(data.getSignature().toByteArray())));
         KNode sender = KNode.fromNode(data.getSenderNode());
 
         int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(sender.getId(), id)).nextSetBit(0);
 
-        transactionStorageFunction.apply(data);
+        if (!transactionStorageFunction.apply(data)) {
+            log.info(String.format("Transaction with signature %s is invalid", Arrays.toString(data.getSignature().toByteArray())));
+            return;
+        }
 
         IntStream.range(0, senderDistance).parallel().forEach(i -> {
             while (true) {
@@ -177,7 +187,7 @@ class RouteTable {
                     ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
                     ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
 
-                    Transaction.Builder transaction = Transaction.newBuilder()
+                    kTransaction.Builder transaction = kTransaction.newBuilder()
                             .setSignature(data.getSignature())
                             .setSender(data.getSender())
                             .setReceiver(data.getReceiver())
@@ -307,7 +317,7 @@ class RouteTable {
         }
     }
 
-    public static byte[] distance(byte[] a, byte[] b) {
+    private static byte[] distance(byte[] a, byte[] b) {
         byte[] result = new byte[a.length];
         for (int i = 0; i < a.length; i++) {
             result[i] = (byte) (a[i] ^ b[i]);
@@ -319,11 +329,11 @@ class RouteTable {
         return id;
     }
 
-    public void setBlockStorageFunction(Function<Block, Boolean> blockStorageFunction) {
+    public void setBlockStorageFunction(Function<kBlock, Boolean> blockStorageFunction) {
         this.blockStorageFunction = blockStorageFunction;
     }
 
-    public void setTransactionStorageFunction(Function<Transaction, Boolean> transactionStorageFunction) {
+    public void setTransactionStorageFunction(Function<kTransaction, Boolean> transactionStorageFunction) {
         this.transactionStorageFunction = transactionStorageFunction;
     }
 

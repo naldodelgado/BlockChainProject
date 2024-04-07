@@ -1,4 +1,4 @@
-package org.example.BlockChain;
+package org.example.Blockchain;
 
 import org.example.Kamdelia.Kademlia;
 
@@ -19,21 +19,19 @@ public class BlockChain {
     }
 
     // called by the network
-    public void store(Byte[] data) {
-        Block a = parseBlock(data);
-
-        if (!verify(a)) return;
+    public boolean store(Block data) {
+        if (!verify(data)) return false;
 
         //TODO: store block
 
-        boolean b = miner.getBlock().getTransactions().stream().map(t -> a.getTransactions().contains(t)).reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
+        boolean b = miner.getBlock().getTransactions().stream().map(t -> data.getTransactions().contains(t)).reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
 
         if (b){
             miner.stopMining();
             transactions.addAll(miner.getBlock().getTransactions());
         }
 
-        for (Transaction t : a.getTransactions()) {
+        for (Transaction t : data.getTransactions()) {
             transactions.remove(t);
         }
 
@@ -42,6 +40,7 @@ public class BlockChain {
             miner = new Miner(new Block(0));
         }
 
+        return true;
     }
 
     public boolean verify(Block block) {
@@ -62,13 +61,21 @@ public class BlockChain {
         return null;
     }
 
-    public void addTransaction() {
-        //add transaction to the transaction list
+    public boolean addTransaction(Transaction transaction) {
+        if (!verifyTransaction(transaction)) {
+            return false;
+        }
 
+        transactions.add(transaction);
+
+        return true;
     }
 
-    public void verifyTransaction(Transaction transaction) {
-        //verify the transaction
+    public boolean verifyTransaction(Transaction transaction) {
+        //is the signature valid?
+        //is the sender's balance enough?
+        //TODO: implement this method
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
 }

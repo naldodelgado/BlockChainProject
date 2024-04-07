@@ -50,7 +50,7 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
     }
 
     @Override
-    public void storeBlock(Block request, StreamObserver<Node> responseObserver){
+    public void storeBlock(kBlock request, StreamObserver<Node> responseObserver){
         log.info("StoreBlock request from " + request.getSender().getId().toStringUtf8());
         Node response = Node.newBuilder()
                 .setId(ByteString.copyFrom(routeTable.getId()))
@@ -65,7 +65,7 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
     }
 
     @Override
-    public void storeTransaction(Transaction request, StreamObserver<Node> responseObserver){
+    public void storeTransaction(kTransaction request, StreamObserver<Node> responseObserver){
         log.info("StoreTransaction request from " + Arrays.toString(request.getSender().toByteArray()));
         Node response = Node.newBuilder()
                 .setId(ByteString.copyFrom(routeTable.getId()))
