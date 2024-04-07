@@ -1,9 +1,13 @@
 package org.example.Kamdelia;
 
 import com.google.protobuf.ByteString;
-import io.grpc.*;
+import io.grpc.Channel;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
 import kademlia_public_ledger.*;
 import org.apache.commons.lang3.tuple.Pair;
+import org.example.poisson.PoissonProcess;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -15,6 +19,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.example.Kamdelia.Kademlia.createSHA1Hash;
+
 class RouteTable {
     private final byte[] id;
     private static final int K = 5;
@@ -23,8 +29,11 @@ class RouteTable {
     private final Logger log;
     private Function<kBlock, Boolean> blockStorageFunction;
     private Function<kTransaction, Boolean> transactionStorageFunction;
+    private final PoissonProcess poissonProcess = new PoissonProcess(4, new Random((int) (Math.random() * 1000)));
+    private final byte[] myIp = Inet4Address.getLocalHost().getAddress();
+    private byte[] previousRandomKey = new byte[20];
 
-    public RouteTable(byte[] id, Logger logger) {
+    public RouteTable(byte[] id, Logger logger) throws UnknownHostException {
         log = logger;
         this.id = id;
         kBuckets = new Queue[id.length * 8 - 1];
@@ -37,6 +46,8 @@ class RouteTable {
         if (blockStorageFunction == null || transactionStorageFunction == null) {
             throw new IllegalStateException("BlockStorageFunction and TransactionStorageFunction must be set before starting the route table");
         }
+
+        executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent(), TimeUnit.SECONDS);
 
         new Thread(() -> {
             // try to fill k-buckets with nodes from the network
@@ -64,6 +75,17 @@ class RouteTable {
                 throw new RuntimeException(e);
             }
         }).start();
+    }
+
+    public void updateKbuckets(){
+
+        byte[] randomId = createSHA1Hash(Arrays.toString(previousRandomKey) + System.currentTimeMillis() + Math.random());
+
+        previousRandomKey = randomId;
+
+        //TODO: send request to find random ID
+
+        executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent(), TimeUnit.SECONDS);
     }
 
     public Iterable<Node> findNode(ByteString id) {

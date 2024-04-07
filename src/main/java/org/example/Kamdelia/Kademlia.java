@@ -37,7 +37,7 @@ public class Kademlia {
         server = ServerBuilder.forPort(port).addService(new KademliaAPI(routeTable,logger)).build();
     }
 
-    private byte[] createSHA1Hash(String s) {
+    static byte[] createSHA1Hash(String s) {
         Digest digest = new SHA1Digest();
         byte[] data = s.getBytes();
         byte[] hash = new byte[digest.getDigestSize()];

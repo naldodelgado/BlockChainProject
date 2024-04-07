@@ -26,6 +26,7 @@ public class BlockChain {
             }
             blocks.add(block);
         }
+
         synchronized (transactions){
             if (transactions.size() > 5){
                 ArrayList<Transaction> t = new ArrayList<>(transactions.subList(0,5));
@@ -33,6 +34,7 @@ public class BlockChain {
                 miner = new Miner(new Block(0, System.currentTimeMillis(), t),this);
             }
         }
+
         this.kademlia.propagate(block);
     }
 
