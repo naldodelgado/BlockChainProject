@@ -69,7 +69,7 @@ public class Kademlia {
                 .setHash(ByteString.copyFrom(data.getHash()))
                 .setPrevHash(data.getPreviousHash() == null ? ByteString.EMPTY : ByteString.copyFrom(data.getPreviousHash()))
                 .setTimestamp(data.getTimestamp())
-                .setNonce(ByteString.copyFrom(new byte[]{(byte) data.getNonce()}))
+                .setNonce(data.getNonce())
                 .addAllTransactions(
                     data.getTransactions().stream().map(t ->
                         kTransaction.newBuilder()

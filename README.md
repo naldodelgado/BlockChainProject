@@ -41,3 +41,12 @@ The nonce in the Block structure is indeed used for mining and proof-of-work (Po
 On the other hand, the Transaction structure typically does not include a nonce field. Transactions are created by users to transfer assets (cryptocurrencies or tokens) from one address to another. They are not directly involved in the mining process or the proof-of-work algorithm. Instead, each transaction has a unique identifier (transaction ID) and may include other fields such as sender address, recipient address, amount, signature, etc.
 
 Therefore, you should include the nonce field only in the Block data structure for mining purposes. Here's the corrected version of the Block class without the nonce field in the Transaction structure:
+
+### todo
+
+- [ ] add a mechanism to download the blockchain
+- [ ] verify the transactions
+- [ ] store list of unspent transactions
+- [ ] deal with extended forking of the blockchain
+- [ ] add a mechanism to update the nodes in the route table in kadmelia
+- [ ] 
