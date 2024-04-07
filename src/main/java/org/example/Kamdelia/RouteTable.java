@@ -1,6 +1,7 @@
 package org.example.Kamdelia;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -79,13 +80,68 @@ class RouteTable {
 
     public void updateKbuckets(){
 
-        byte[] randomId = createSHA1Hash(Arrays.toString(previousRandomKey) + System.currentTimeMillis() + Math.random());
+        byte[] randomKey = createSHA1Hash(Arrays.toString(previousRandomKey) + System.currentTimeMillis() + Math.random());
 
-        previousRandomKey = randomId;
+        previousRandomKey = randomKey;
 
         //TODO: send request to find random ID
+        try {
+            log.info("Finding random node");
+            int index = BitSet.valueOf(distance(randomKey, id)).nextSetBit(0) - 1;
+            List<KNode> nodes = new ArrayList<>();
+            if (index > -1) {
+                synchronized (kBuckets[index]){
+                    while (kBuckets[index].isEmpty()){
+                        index--;
+                    }
 
-        executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent(), TimeUnit.SECONDS);
+                    if (index > 0) {
+                        nodes = kBuckets[index].stream().map(Pair::getLeft).sorted( (a, b) -> {
+                            byte[] aDistance = distance(a.getId(), randomKey);
+                            byte[] bDistance = distance(b.getId(), randomKey);
+
+                            for (int i = 0; i < aDistance.length; i++) {
+                                if (aDistance[i] != bDistance[i]) {
+                                    return aDistance[i] - bDistance[i];
+                                }
+                            }
+                            return 0;
+                        }).collect(Collectors.toList());
+                    }
+                }
+            }
+
+            ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(nodes.get(0).getIp()).getHostAddress(), nodes.get(0).getPort()).build();
+            ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
+
+            while (!nodes.isEmpty()) {
+
+                log.info(String.format("Finding node with random ID %s in the node %s", Arrays.toString(randomKey), Arrays.toString(nodes.get(0).getId())));
+                var response = stub.findKey(Key.parseFrom(randomKey));
+
+                if (response.getFound()){
+                    log.info("Found node with random ID:" + Arrays.toString(randomKey));
+                    break;
+                }
+
+                if (response.getKBucket().getNodesCount() == 0){
+                    log.info("No nodes in the route table");
+                    nodes.remove(0);
+                    continue;
+                }
+
+                add(response.getKBucket().getNodesList());
+
+                channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(response.getKBucket().getNodes(0).getIp().toByteArray()).getHostAddress(), response.getKBucket().getNodes(0).getPort()).build();
+                stub = ServicesGrpc.newBlockingStub(channel);
+            }
+        }   catch (UnknownHostException | InvalidProtocolBufferException e) {
+            throw new RuntimeException(e);
+        }
+
+        long t = (long) poissonProcess.timeForNextEvent();
+        log.info("Scheduling next update in " + t + " seconds");
+        executorService.schedule(this::updateKbuckets, t, TimeUnit.SECONDS);
     }
 
     public Iterable<Node> findNode(ByteString id) {

@@ -9,14 +9,22 @@ service Services {
     rpc StoreBlock (kBlock) returns (Node) {}
     rpc StoreTransaction (kTransaction) returns (Node) {}
     rpc FindNode (Node) returns (KBucket) {}
+    rpc FindKey (Key) returns (FindKeyReturn) {}
     rpc FindBlock (Key) returns (kBlock) {}
     rpc FindTransaction (Key) returns (kTransaction) {}
+}
+
+message FindKeyReturn {
+    Node sender = 1;
+    bytes key = 2;
+    KBucket kBucket = 3;
+    bool found = 4;
 }
 
 message KBucket {
     Node sender = 1;
     repeated Node nodes = 2;
-    string com_key = 3;
+    string com_key = 3; //TODO: is this necessary?
 }
 
 message kBlock {
