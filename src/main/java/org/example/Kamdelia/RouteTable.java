@@ -32,6 +32,7 @@ class RouteTable {
     private Function<kTransaction, Boolean> transactionStorageFunction;
     private final PoissonProcess poissonProcess = new PoissonProcess(4, new Random((int) (Math.random() * 1000)));
     private final byte[] myIp = Inet4Address.getLocalHost().getAddress();
+    private final int myPort = 5000;
     private byte[] previousRandomKey = new byte[20];
 
     public RouteTable(byte[] id, Logger logger) throws UnknownHostException {
@@ -151,17 +152,13 @@ class RouteTable {
             return kBuckets[index].stream().map(Pair::getLeft).map(KNode::toNode).collect(Collectors.toCollection(ArrayList::new));
         }
 
-        try {
-            if (index == -1)
-                return Collections.singleton(
-                    Node.newBuilder()
-                        .setId(ByteString.copyFrom(this.id))
-                        .setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress()))
-                        .setPort(5000)
-                        .build());
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
-        }
+        if (index == -1)
+            return Collections.singleton(
+                Node.newBuilder()
+                    .setId(ByteString.copyFrom(this.id))
+                    .setIp(ByteString.copyFrom(myIp))
+                    .setPort(myPort)
+                    .build());
 
         return Collections.emptyList();
     }
@@ -179,14 +176,12 @@ class RouteTable {
 
      private void add(KNode kNode, int index) {
         if (kBuckets[index].stream().map(Pair::getLeft).anyMatch(k -> Arrays.equals(k.getId(), kNode.getId()))){
-            sendToFirst(kBuckets[index], kNode);
+            update(kBuckets[index], kNode);
         }else{
             log.info(String.format("Adding node %s to the route table", Arrays.toString(kNode.getIp())));
-            synchronized (kBuckets[index]){
-                if (kBuckets[index].size() >= Math.min(K, 1 << Math.min(index, 31))) {
-                    kBuckets[index].remove().getRight().cancel(false);
-                }
-                kBuckets[index].add(Pair.of(kNode, executorService.schedule(() -> refresh(kNode, index), 1, TimeUnit.HOURS)));
+            ScheduledFuture<?> future = executorService.schedule(() -> refresh(kNode, index), 1, TimeUnit.HOURS);
+            if (!kBuckets[index].offer(Pair.of(kNode, future))){
+                future.cancel(false);
             }
         }
     }
@@ -226,7 +221,7 @@ class RouteTable {
 
                     stub.storeBlock(block);
 
-                    sendToFirst(kBuckets[i], node);
+                    update(kBuckets[i], node);
 
                     break;
                 } catch (UnknownHostException e) {
@@ -275,11 +270,14 @@ class RouteTable {
                     if (data.hasSenderNode())
                         transaction.setSenderNode(data.getSenderNode());
                     else
-                        transaction.setSenderNode(Node.newBuilder().setId(ByteString.copyFrom(id)).setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress())).setPort(5000));
+                        transaction.setSenderNode(Node.newBuilder()
+                                .setId(ByteString.copyFrom(id))
+                                .setIp(ByteString.copyFrom(myIp))
+                                .setPort(myPort));
 
                     stub.storeTransaction(transaction.build());
 
-                    sendToFirst(kBuckets[i], node);
+                    update(kBuckets[i], node);
 
                     break;
                 } catch (UnknownHostException e) {
@@ -303,19 +301,19 @@ class RouteTable {
                 stub.ping(
                         Node.newBuilder()
                                 .setId(ByteString.copyFrom(id))
-                                //TODO: set port
-                                .setPort(5000)
-                                .setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress()))
+                                .setPort(myPort)
+                                .setIp(ByteString.copyFrom(myIp))
                                 .build()
                 );
+                log.info(String.format("Node %s %s responded to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
             } catch (StatusRuntimeException e) {
                 log.info(String.format("Node %s %s did not respond to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
                 // doesn't need to cancel the future
-                kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId()));
+                kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())); //TODO: maybe try to update the kBucket
                 return;
             }
 
-            sendToFirst(kBuckets[index], node);
+            update(kBuckets[index], node);
 
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
@@ -352,7 +350,7 @@ class RouteTable {
                     }
                 }
             }
-            Node thisNode = Node.newBuilder().setId(ByteString.copyFrom(id)).setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress())).setPort(5000).build();
+            Node thisNode = Node.newBuilder().setId(ByteString.copyFrom(id)).setIp(ByteString.copyFrom(Inet4Address.getLocalHost().getAddress())).setPort(myPort).build();
 
             while (!nodes.isEmpty()) {
                 log.info(String.format("Retrieving data with key %s from node %s %s", Arrays.toString(key), Arrays.toString(nodes.get(0).getId().toByteArray()), Arrays.toString(nodes.get(0).getIp().toByteArray())));
@@ -387,8 +385,8 @@ class RouteTable {
     }
     */
 
-    private void sendToFirst(Queue<Pair<KNode,ScheduledFuture<?>>> kBucket, KNode node){
-        synchronized (kBuckets) {
+    private void update(Queue<Pair<KNode,ScheduledFuture<?>>> kBucket, KNode node){
+        synchronized (kBucket) {
             kBucket.stream().filter(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())).forEach(pair -> pair.getRight().cancel(false));
             if(kBucket.removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())))
                 kBucket.add(Pair.of(node, executorService.schedule(() -> refresh(node, 0), 1, TimeUnit.HOURS)));

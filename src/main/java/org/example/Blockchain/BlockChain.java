@@ -12,6 +12,7 @@ public class BlockChain {
     private final List<Transaction> transactions;
     private Miner miner;
     private final Kademlia kademlia;
+    private final int TRANSACTION_PER_BLOCK = 5;
 
     public BlockChain(Kademlia kademlia) {
         this.transactions = new ArrayList<>();
@@ -28,8 +29,8 @@ public class BlockChain {
         }
 
         synchronized (transactions){
-            if (transactions.size() > 5){
-                ArrayList<Transaction> t = new ArrayList<>(transactions.subList(0,5));
+            if (transactions.size() > TRANSACTION_PER_BLOCK){
+                ArrayList<Transaction> t = new ArrayList<>(transactions.subList(0,TRANSACTION_PER_BLOCK));
                 transactions.removeAll(t);
                 miner = new Miner(new Block(0, System.currentTimeMillis(), t),this);
             }
@@ -47,7 +48,11 @@ public class BlockChain {
             //TODO: store block if the list is full
         }
 
-        boolean b = miner.getBlock().getTransactions().stream().map(t -> data.getTransactions().contains(t)).reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
+        boolean b = miner.getBlock()
+                .getTransactions()
+                .stream()
+                .map(t -> data.getTransactions().contains(t))
+                .reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
 
         if (b){
             miner.stopMining();
@@ -62,7 +67,7 @@ public class BlockChain {
         
         //start mining if there are enough transactions
         synchronized (transactions){
-            if (transactions.size() >= 5) {
+            if (transactions.size() >= TRANSACTION_PER_BLOCK) {
                 miner = new Miner(new Block(0),this);
             }
         }
