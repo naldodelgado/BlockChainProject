@@ -143,9 +143,7 @@ public class BlockChain {
 
     private boolean verifyTransaction(Transaction transaction) {
         //is the signature valid?
-        if (!transaction.verifySignature()) {
-            return false;
-        }
+        //TODO: verify the signature
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
