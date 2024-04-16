@@ -1,10 +1,16 @@
 package org.example.Blockchain;
 
 import kademlia_public_ledger.kTransaction;
+import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
+import org.bouncycastle.crypto.digests.SHA256Digest;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Date;
+
 
 public class Transaction implements Serializable {
     private final byte[] transactionId;
@@ -12,7 +18,7 @@ public class Transaction implements Serializable {
     private final byte[] recipientAddress; // public key
     private final int amount;
     private final long timestamp;
-    //private final byte[] signature;
+    //private final HSSSignature signature;
 
     // Constructor
     public Transaction(byte[] senderAddress, byte[] recipientAddress, int amount) {
@@ -22,7 +28,37 @@ public class Transaction implements Serializable {
         this.timestamp = new Date().getTime();
         this.transactionId = generateTransactionId();
         assert transactionId.length == 20;
+
+
         // Generate transactionId, signature, nonce, etc.
+    }
+
+    private byte[] Sign(){
+        Object[] objects = {senderAddress, recipientAddress, amount, timestamp};
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+
+            // Serialize each object and write it to the stream so than the digest function is able to use multiple objects as input
+            for (Object obj : objects) {
+                objectOutputStream.writeObject(obj);
+            }
+            objectOutputStream.close();
+
+            byte[] data = byteArrayOutputStream.toByteArray();
+
+            // Using SHA-256 as an example hash function
+            Digest digest = new SHA256Digest();
+            byte[] hash = new byte[digest.getDigestSize()];
+
+            digest.update(data, 0, data.length);
+            digest.doFinal(hash, 0);
+
+            return hash;
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException();
+        }
     }
 
     private byte[] generateTransactionId() {

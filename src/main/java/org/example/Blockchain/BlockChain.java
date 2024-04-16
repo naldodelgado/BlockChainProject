@@ -2,6 +2,10 @@ package org.example.Blockchain;
 
 import org.example.Kamdelia.Kademlia;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,8 +48,17 @@ public class BlockChain {
         if (!verify(data)) return false;
 
         synchronized (blocks){
-            blocks.add(data);
-            //TODO: store block if the list is full
+            if (!blocks.isEmpty()) {
+                if (Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
+                    blocks.add(data);
+                } else if (Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())){
+                    if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp())
+                        blocks.add(data);
+                }
+
+                Arrays.compare(data.getPreviousHash(), blocks.get(blocks.size() - 1).getHash());
+            }
+
         }
 
         boolean b = miner.getBlock()
@@ -82,11 +95,33 @@ public class BlockChain {
                 return false;
             }
         }
-        /* Does this block claim that he is the successor to the last block we have in memory?
-        * If not, we can just discard it because we already have a successor*/
+
         synchronized (blocks){
-            if (!blocks.isEmpty() && !Arrays.equals(blocks.get(blocks.size() - 1).getHash(), block.getPreviousHash())) {
-                return false;
+            if (!blocks.isEmpty()) {
+
+                //is the previous hash correct?
+                if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
+                    if (block.getTimestamp() < blocks.get(blocks.size() - 1).getTimestamp())
+                        return false;
+                } else if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())){
+                    // forking
+                    if (block.getTimestamp() < blocks.get(blocks.size() - 2).getTimestamp())
+                        return false;
+                } else {
+                    // the previous hash does not match any of the last two blocks
+                    return false;
+                }
+
+                //is the merkle root correct?
+                if (!Arrays.equals(block.calculateMerkleRoot(), block.getMerkleRoot()))
+                    return false;
+
+                //is the nonce valid?
+                if (block.isNonceValid())
+                    return false;
+
+                //is the hash correct?
+                return Arrays.equals(block.getHash(), block.calculateHash());
             }
         }
 
@@ -106,12 +141,41 @@ public class BlockChain {
         return true;
     }
 
-    public boolean verifyTransaction(Transaction transaction) {
+    private boolean verifyTransaction(Transaction transaction) {
         //is the signature valid?
-
-        //is the sender's balance enough?
-        //TODO: implement this method
+        if (!transaction.verifySignature()) {
+            return false;
+        }
         throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    private static void storeBlock(Block block) {
+        File file = new File("blockchain/" + hexString( block.getHash()) + ".block");
+
+        // TODO: deal with hash collision
+
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+            objectOutputStream.writeObject(block);
+            objectOutputStream.close();
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public static String hexString(byte[] byteArray)
+    {
+        String hex = "";
+
+        // Iterating through each byte in the array
+        for (byte i : byteArray) {
+            hex += String.format("%02X", i);
+        }
+
+        return hex;
     }
 
 }

@@ -45,8 +45,8 @@ Therefore, you should include the nonce field only in the Block data structure f
 ### todo
 
 - [ ] add a mechanism to download the blockchain
-- [ ] verify the transactions
-- [ ] store list of unspent transactions
-- [ ] deal with extended forking of the blockchain
+- [X] deal with extended forking of the blockchain
 - [ ] add a mechanism to update the nodes in the route table in kadmelia
-- [ ] 
+- [ ] process to update the mining difficulty
+- [ ] How far back does the extended forking go?
+- [ ] Should I deal with cloned transactions?

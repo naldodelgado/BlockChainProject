@@ -8,11 +8,12 @@ import org.bouncycastle.crypto.digests.SHA256Digest;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class Block {
+public class Block implements Serializable {
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
     private byte[] previousHash = new byte[32]; // Hash of the previous block - will only be defined after mining
     private final ArrayList<Transaction> transactions; // List of transactions in this block
@@ -20,7 +21,7 @@ public class Block {
     private long timestamp; // Timestamp of when this block was created
     private int nonce; // Nonce used in mining - this can only be set once. IMMUTABLE
     private byte[] merkleRoot = new byte[32]; // Merkle root of the transactions in this block
-    static int numZeros = 0; // Number of zeros required at the start of the hash
+    private static int numZeros = 0; // Number of zeros required at the start of the hash
 
     // Constructor
     public Block(int nonce) {
@@ -39,7 +40,23 @@ public class Block {
         this.transactions = transactions;
         this.nonce = nonce;
         this.timestamp = timestamp;
-        calculateMerkleRoot();
+        this.merkleRoot = calculateMerkleRoot();
+    }
+
+    public byte[] getMerkleRoot() {
+        return merkleRoot;
+    }
+
+    public boolean isNonceValid() {
+        byte[] hash = calculateHash();
+        int i;
+        for (i = 0; i < numZeros; i++) {
+            if (hash[i] != 0) {
+                break;
+            }
+        }
+
+        return i >= numZeros;
     }
 
 
@@ -114,11 +131,7 @@ public class Block {
         return nonce;
     }
 
-    public byte[] getMerkleRoot() {
-        return merkleRoot;
-    }
-
-    public void calculateMerkleRoot() {
+    public byte[] calculateMerkleRoot() {
         List<byte[]> hashes = new ArrayList<>();
 
         for (int i = 0; i < transactions.size(); i += 2) {
@@ -126,10 +139,10 @@ public class Block {
             byte[] hash = transactions.get(i).calculateHash();
         }
 
-        merkleRoot = calculateMerkleRoot(hashes);
+         return calculateMerkleRoot(hashes);
     }
 
-    public byte[] calculateMerkleRoot(List<byte[]> hashes) {
+    private byte[] calculateMerkleRoot(List<byte[]> hashes) {
         if (hashes.size() == 1) {
             return hashes.get(0);
         }
