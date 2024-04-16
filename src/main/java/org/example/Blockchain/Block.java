@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class Block {
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
@@ -18,7 +19,8 @@ public class Block {
     private static final int MAX_TRANSACTIONS = 5; // Maximum number of transactions in a block
     private long timestamp; // Timestamp of when this block was created
     private int nonce; // Nonce used in mining - this can only be set once. IMMUTABLE
-     static int numZeros = 0; // Number of zeros required at the start of the hash
+    private byte[] merkleRoot = new byte[32]; // Merkle root of the transactions in this block
+    static int numZeros = 0; // Number of zeros required at the start of the hash
 
     // Constructor
     public Block(int nonce) {
@@ -37,6 +39,7 @@ public class Block {
         this.transactions = transactions;
         this.nonce = nonce;
         this.timestamp = timestamp;
+        calculateMerkleRoot();
     }
 
 
@@ -46,7 +49,7 @@ public class Block {
     }
 
     public byte[] calculateHash() {
-        Object[] objects = {previousHash, timestamp, nonce, transactions}; // Serialize these objects to calculate the hash
+        Object[] objects = {previousHash, timestamp, nonce, merkleRoot}; // Serialize these objects to calculate the hash
         try {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
@@ -109,6 +112,50 @@ public class Block {
 
     public int getNonce() {
         return nonce;
+    }
+
+    public byte[] getMerkleRoot() {
+        return merkleRoot;
+    }
+
+    public void calculateMerkleRoot() {
+        List<byte[]> hashes = new ArrayList<>();
+
+        for (int i = 0; i < transactions.size(); i += 2) {
+            // hash the transaction
+            byte[] hash = transactions.get(i).calculateHash();
+        }
+
+        merkleRoot = calculateMerkleRoot(hashes);
+    }
+
+    public byte[] calculateMerkleRoot(List<byte[]> hashes) {
+        if (hashes.size() == 1) {
+            return hashes.get(0);
+        }
+
+        List<byte[]> newHashes = new ArrayList<>();
+
+        for (int i = 0; i < hashes.size(); i += 2) {
+            newHashes.add(calculateHash(hashes.get(i), hashes.get(i + 1)));
+        }
+
+        return calculateMerkleRoot(newHashes);
+    }
+
+    private byte[] calculateHash(byte[] hash1, byte[] hash2) {
+        byte[] data = new byte[hash1.length + hash2.length];
+        System.arraycopy(hash1, 0, data, 0, hash1.length);
+        System.arraycopy(hash2, 0, data, hash1.length, hash2.length);
+
+        // Using SHA-256 as an example hash function
+        Digest digest = new SHA256Digest();
+        byte[] hash = new byte[digest.getDigestSize()];
+
+        digest.update(data, 0, data.length);
+        digest.doFinal(hash, 0);
+
+        return hash;
     }
 
     // Other methods as needed

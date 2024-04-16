@@ -1,10 +1,10 @@
 package org.example.Blockchain;
 
-import java.io.Serializable;
-import java.util.Date;
-
 import kademlia_public_ledger.kTransaction;
 import org.bouncycastle.crypto.digests.SHA1Digest;
+
+import java.io.Serializable;
+import java.util.Date;
 
 public class Transaction implements Serializable {
     private final byte[] transactionId;
@@ -69,6 +69,29 @@ public class Transaction implements Serializable {
 
     public long getTimestamp() {
         return timestamp;
+    }
+
+    public kTransaction toGrpc() {
+        return kTransaction.newBuilder()
+                .setSender(com.google.protobuf.ByteString.copyFrom(senderAddress))
+                .setReceiver(com.google.protobuf.ByteString.copyFrom(recipientAddress))
+                .setAmount(amount)
+                .build();
+    }
+
+    public byte[] encryptTransaction() {
+        // Encrypt the transaction data
+        return null;
+    }
+
+    public byte[] calculateHash() {
+        SHA1Digest digest = new SHA1Digest();
+        byte[] data = concatenateByteArrays(senderAddress, recipientAddress);
+        //TODO: Add timestamp to the data
+        byte[] hash = new byte[digest.getDigestSize()];
+        digest.update(data, 0, data.length);
+        digest.doFinal(hash, 0);
+        return hash;
     }
 
     // Additional methods for transaction processing, signature generation, etc.
