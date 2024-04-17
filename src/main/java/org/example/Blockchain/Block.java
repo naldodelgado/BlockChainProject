@@ -21,7 +21,7 @@ public class Block implements Serializable {
     private long timestamp; // Timestamp of when this block was created
     private int nonce; // Nonce used in mining - this can only be set once. IMMUTABLE
     private byte[] merkleRoot = new byte[32]; // Merkle root of the transactions in this block
-    private static int numZeros = 0; // Number of zeros required at the start of the hash
+    static int numZeros = 0; // Number of zeros required at the start of the hash
 
     // Constructor
     public Block(int nonce) {
