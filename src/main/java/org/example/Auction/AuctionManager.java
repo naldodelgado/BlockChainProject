@@ -1,11 +1,11 @@
 package org.example.Auction;
 
+import org.example.Wallet;
+
 import java.security.SecureRandom;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.logging.Logger;
-
-import org.example.Wallet;
 
 public class AuctionManager {
 
@@ -81,7 +81,7 @@ public class AuctionManager {
         long amountRead = scanner.nextLong();
         
         System.out.println("Insert the minimun increment percentage");
-        float increment = scanner.nextFloat();
+        long increment = scanner.nextLong();
        
         System.out.println("Insert the fee for the auction \nBigger fees equals faster processing");
         long fee = scanner.nextLong();
