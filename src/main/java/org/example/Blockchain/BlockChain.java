@@ -62,20 +62,20 @@ public class BlockChain {
         }
 
         boolean b = miner.getBlock()
-                .getTransactions()
+                .getBids()
                 .stream()
-                .map(t -> data.getTransactions().contains(t))
+                .map(t -> data.getBids().contains(t))
                 .reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
 
         if (b){
             miner.stopMining();
             synchronized (transactions){
-                transactions.addAll(miner.getBlock().getTransactions());
+                transactions.addAll(miner.getBlock().getBids());
             }
         }
 
         synchronized (transactions){
-            transactions.removeAll(data.getTransactions());
+            transactions.removeAll(data.getBids());
         }
         
         //start mining if there are enough transactions
@@ -90,7 +90,7 @@ public class BlockChain {
 
     private boolean verify(Block block) {
         //are the transactions valid?
-        for(Transaction t : block.getTransactions()) {
+        for(Transaction t : block.getBids()) {
             if (!verifyTransaction(t)) {
                 return false;
             }

@@ -29,7 +29,7 @@ class RouteTable {
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
     private final Logger log;
     private Function<kBlock, Boolean> blockStorageFunction;
-    private Function<kTransaction, Boolean> transactionStorageFunction;
+    private Function<Bid, Boolean> transactionStorageFunction;
     private final PoissonProcess poissonProcess = new PoissonProcess(4, new Random((int) (Math.random() * 1000)));
     private final byte[] myIp = Inet4Address.getLocalHost().getAddress();
     private final int myPort = 5000;
@@ -235,7 +235,7 @@ class RouteTable {
         });
     }
 
-    public void propagate(kTransaction data) {
+    public void propagate(Bid data) {
         log.info(String.format("Storing transaction with signature %s", Arrays.toString(data.getSignature().toByteArray())));
         KNode sender = KNode.fromNode(data.getSenderNode());
 
@@ -260,7 +260,7 @@ class RouteTable {
                     ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
                     ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
 
-                    kTransaction.Builder transaction = kTransaction.newBuilder()
+                    Bid.Builder bid = Bid.newBuilder()
                             .setSignature(data.getSignature())
                             .setSender(data.getSender())
                             .setReceiver(data.getReceiver())
@@ -268,14 +268,14 @@ class RouteTable {
                             .setTimestamp(data.getTimestamp());
 
                     if (data.hasSenderNode())
-                        transaction.setSenderNode(data.getSenderNode());
+                        bid.setSenderNode(data.getSenderNode());
                     else
-                        transaction.setSenderNode(Node.newBuilder()
+                        bid.setSenderNode(Node.newBuilder()
                                 .setId(ByteString.copyFrom(id))
                                 .setIp(ByteString.copyFrom(myIp))
                                 .setPort(myPort));
 
-                    stub.storeTransaction(transaction.build());
+                    stub.storeTransaction(kTransaction.newBuilder().setBid(bid.build()).build());
 
                     update(kBuckets[i], node);
 
@@ -409,7 +409,7 @@ class RouteTable {
         this.blockStorageFunction = blockStorageFunction;
     }
 
-    public void setTransactionStorageFunction(Function<kTransaction, Boolean> transactionStorageFunction) {
+    public void setTransactionStorageFunction(Function<Bid, Boolean> transactionStorageFunction) {
         this.transactionStorageFunction = transactionStorageFunction;
     }
 

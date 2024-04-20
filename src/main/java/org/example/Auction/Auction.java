@@ -4,27 +4,26 @@ import org.example.CryptoUtils.KeysManager;
 import org.example.Wallet;
 
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.logging.Logger;
 
 public class Auction {
 
     private final String idItem;
     private final PublicKey idSeller;
-    private long minAmount;
-    private long minIncrement;
-    private long fee;
-    private long timeout;
+    private final long minAmount;
+    private final long minIncrement;
+    private final long timeout;
     private  final PublicKey sellerPublicKey;
-    private final String hash;
+    private final byte[] hash;
     private final byte[] signature;
     private static final Logger logger = Logger.getLogger(Auction.class.getName());
     
-    public Auction(String idItem, PublicKey idSeller, long minAmount, long minIncrement, long fee, long timeout, PublicKey sellerPublicKey, String hash, byte[] signature) {
+    public Auction(String idItem, PublicKey idSeller, long minAmount, long minIncrement, long timeout, PublicKey sellerPublicKey, byte[] hash, byte[] signature) {
         this.idItem = idItem;
         this.idSeller = idSeller;
         this.minAmount = minAmount;
         this.minIncrement = minIncrement;
-        this.fee = fee;
         this.timeout = timeout;
         this.sellerPublicKey = sellerPublicKey;
         this.hash = hash;
@@ -35,40 +34,34 @@ public class Auction {
         this.idSeller=seller.getPublicKey();
         this.minAmount=minAmount;
         this.minIncrement=minIncrement;
-        this.fee = fee;
         this.timeout = timeout;
         this.sellerPublicKey= seller.getPublicKey();
-        this.hash= this.getHashToBeSigned();
-        this.signature = KeysManager.signHash(seller.getPrivateKey(), this.hash, logger);
+        this.hash= KeysManager.hash(new Object[]{this.idItem, this.idSeller, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey.hashCode()});
+
+        Object[] objects = {this.idItem, this.idSeller, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey.hashCode()};
+
+        this.signature = KeysManager.sign(seller.getPrivateKey(), objects);
     }
 
     public Boolean verifyAuction(){
-        //return false;
-        return  isHashValid()
-                && KeysManager.verifySignature(this.signature, this.hash, this.sellerPublicKey)
-                && this.sellerPublicKey.equals(this.idSeller);
-    }
-    
-    private String getHashToBeSigned() {
-        return Utils.getHash(this.idItem + this.idSeller + this.minAmount + this.minIncrement + this.fee + this.timeout + this.sellerPublicKey.hashCode());
-    }
-
-    private Boolean isHashValid() {
-        if(!this.hash.equals(this.getHashToBeSigned())){
+        Object[] objects = {this.idItem, this.idSeller, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey.hashCode()};
+        if(
+                !Arrays.equals(this.hash, KeysManager.hash(objects))
+                &&  KeysManager.verifySignature(this.signature, this.hash, this.sellerPublicKey)
+                &&  this.sellerPublicKey.equals(this.idSeller)
+        ){
             logger.warning("Auction Hashes don't match");
             return false;
-        }
-        else return true;
+        } else
+            return true;
     }
-
-
 
     //Getters
     public PublicKey getSellerPublicKey() {
         return sellerPublicKey;
     }
 
-    public String getHash() {
+    public byte[] getHash() {
         return hash;
     }
 
@@ -90,10 +83,6 @@ public class Auction {
 
     public float getMinIncrement() {
         return minIncrement;
-    }
-
-    public long getFee() {
-        return fee;
     }
 
     public long getTimeout() {

@@ -14,11 +14,28 @@ service Services {
     rpc FindTransaction (Key) returns (kTransaction) {}
 }
 
+message kTransaction {
+    Node sender = 1;
+    oneof transaction {
+        Bid bid = 2;
+        Auction auction = 3;
+    }
+}
+
 message FindKeyReturn {
     Node sender = 1;
     bytes key = 2;
     KBucket kBucket = 3;
     bool found = 4;
+}
+
+message Auction {
+    bytes key = 2;
+    int64 timeout = 3;
+    bytes signature = 4;
+    bytes hash = 5;
+    int32 highest = 6;
+    int32 startBid = 7;
 }
 
 message KBucket {
@@ -34,10 +51,9 @@ message kBlock {
     repeated kTransaction transactions = 4;
     int32 Nonce = 5;
     int64 timestamp = 6;
-
 }
 
-message kTransaction {
+message Bid {
     Node senderNode = 1;
     bytes sender = 2;
     bytes receiver = 3;

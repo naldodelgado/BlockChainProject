@@ -31,25 +31,12 @@ public class Miner implements Runnable{
 
     @Override
     public void run() {
-        // Mining logic
-        while (isMining) {
-            byte[] hash = block.calculateHash();
-            // Check if the hash has the required number of zeros
+        while (!block.isNonceValid() && isMining) {
+            block.setNonce(block.getNonce() + 1);
+        }
 
-            int i;
-            for (i = 0; i < Block.numZeros; i++) {
-                if (hash[i] != 0) {
-                    block.setNonce(block.getNonce() + 1);
-                    break;
-                }
-            }
-
-            // If the hash has the required number of zeros, stop mining and  propagate the block
-            if (i == Block.numZeros) {
-                blockChain.propagateBlock(block);
-                break;
-            }
-
+        if(block.isNonceValid()){
+            blockChain.addBlock(block);
         }
     }
 

@@ -3,6 +3,7 @@ package org.example.Kamdelia;
 import com.google.protobuf.ByteString;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import kademlia_public_ledger.Bid;
 import kademlia_public_ledger.kBlock;
 import kademlia_public_ledger.kTransaction;
 import org.bouncycastle.crypto.Digest;
@@ -71,13 +72,15 @@ public class Kademlia {
                 .setTimestamp(data.getTimestamp())
                 .setNonce(data.getNonce())
                 .addAllTransactions(
-                    data.getTransactions().stream().map(t ->
-                        kTransaction.newBuilder()
-                            .setSender(ByteString.copyFrom(t.getRecipientAddress()))
-                            .setReceiver(ByteString.copyFrom(t.getRecipientAddress()))
-                            .setAmount(t.getAmount())
-                            .setTimestamp(t.getTimestamp())
-                            .build()
+                    data.getBids().stream().map(t ->
+                        kTransaction.newBuilder().setBid(
+                            Bid.newBuilder()
+                                .setSender(ByteString.copyFrom(t.getRecipientAddress()))
+                                .setReceiver(ByteString.copyFrom(t.getRecipientAddress()))
+                                .setAmount(t.getAmount())
+                                .setTimestamp(t.getTimestamp())
+                                .build()
+                        ).build()
                     ).collect(Collectors.toList())
                 ).build();
 
@@ -85,8 +88,8 @@ public class Kademlia {
     }
 
     public void propagate(Transaction data) {
-        kTransaction transaction = kTransaction.newBuilder()
-                .setSender(ByteString.copyFrom(data.getSenderAddress()))
+        Bid transaction = Bid.newBuilder()
+                .setSender(ByteString.copyFrom(data.getActionID()))
                 .setReceiver(ByteString.copyFrom(data.getRecipientAddress()))
                 .setAmount(data.getAmount())
                 .setTimestamp(data.getTimestamp())
@@ -100,7 +103,7 @@ public class Kademlia {
         routeTable.setBlockStorageFunction(blockStorageFunction);
     }
 
-    public void setTransactionStorageFunction(Function<kTransaction, Boolean> transactionStorageFunction) {
+    public void setTransactionStorageFunction(Function<Bid, Boolean> transactionStorageFunction) {
         // the function should return true if the transaction is valid and stored, false otherwise
         routeTable.setTransactionStorageFunction(transactionStorageFunction);
     }

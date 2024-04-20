@@ -1,16 +1,23 @@
 package org.example.CryptoUtils;
 
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.example.Auction.Utils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.logging.Logger;
 
 public class KeysManager {
+
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
 
     public static KeyPair generateKeys() {
         try {
@@ -25,13 +32,43 @@ public class KeysManager {
 
     }
 
-    public static byte[] signHash(PrivateKey privateKey, String hash, Logger logger){
+    public static byte[] hash(Object[] data){
         try {
-            Signature ecdsaSign = Signature.getInstance("SHA256withECDSA");
-            ecdsaSign.initSign(privateKey);
-            //ecdsaSign.update(Utils.hexStringToBytes(hash));
-            return ecdsaSign.sign();
-        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+
+            // Serialize each object and write it to the stream so than the digest function is able to use multiple objects as input
+            for (Object obj : data) {
+                objectOutputStream.writeObject(obj);
+            }
+            objectOutputStream.close();
+
+            byte[] stream = byteArrayOutputStream.toByteArray();
+
+            // Using SHA-256 as an example hash function
+            Digest digest = new SHA256Digest();
+            byte[] hash = new byte[digest.getDigestSize()];
+
+            digest.update(stream, 0, data.length);
+            digest.doFinal(hash, 0);
+
+            return hash;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static byte[] sign(PrivateKey privateKey, Object[] data){
+        // hash the data
+        try {
+            byte[] hash = hash(data);
+            Signature signature = Signature.getInstance("SHA256withECDSA", "BC");
+            signature.initSign(privateKey);
+            signature.update(hash);
+            return signature.sign();
+        } catch (InvalidKeyException | SignatureException e) {
+            return null;
+        } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
             throw new RuntimeException(e);
         }
     }
@@ -57,13 +94,16 @@ public class KeysManager {
     }
 
 
-    public static Boolean verifySignature(byte[] signature, String hash, PublicKey publicKey){
+    public static Boolean verifySignature(byte[] signature, byte[] hash, PublicKey publicKey){
         try {
+            Security.addProvider(new BouncyCastleProvider());
             Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA");
             ecdsaVerify.initVerify(publicKey);
-            ecdsaVerify.update(Utils.hexStringToBytes(hash));
+            ecdsaVerify.update(hash);
             return ecdsaVerify.verify(signature);
-        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
+        } catch (NoSuchAlgorithmException e){
+            throw new RuntimeException(e);
+        } catch (InvalidKeyException | SignatureException e) {
             return false;
         }
     }
