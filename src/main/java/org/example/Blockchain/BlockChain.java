@@ -1,13 +1,8 @@
 package org.example.Blockchain;
 
 import org.example.Client.Transaction;
-import org.example.CryptoUtils.KeysManager;
 import org.example.Kamdelia.Kademlia;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,33 +13,13 @@ public class BlockChain {
     private final List<Transaction> transactions;
     private Miner miner;
     private final Kademlia kademlia;
-    private final int TRANSACTION_PER_BLOCK = 5;
 
     public BlockChain(Kademlia kademlia) {
+        kademlia.setBlockStorageFunction((t) -> store(Block.fromGrpc(t)));
+        kademlia.setTransactionStorageFunction((t) -> addTransaction(Transaction.fromGrpc(t)));
         this.transactions = new ArrayList<>();
         this.blocks = new ArrayList<>();
         this.kademlia = kademlia;
-    }
-
-    private static void storeBlock(Block block) {
-        File file = new File("blockchain/blocks" + KeysManager.hexString(block.getHash()) + ".block");
-
-        // TODO: deal with hash collision
-        try {
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-            objectOutputStream.writeObject(block);
-            objectOutputStream.close();
-            fileOutputStream.close();
-
-            //store the transactions
-            for (Transaction t : block.getTransactions()) {
-                t.store();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     public void propagateBlock(Block block) {
@@ -52,27 +27,45 @@ public class BlockChain {
             if (!Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
                 return;
             }
+            kademlia.propagate(block);
+
             if (blocks.size() > 10) {
-                storeBlock(blocks.remove(0));
+                blocks.remove(0).store();
             }
 
             blocks.add(block);
-            kademlia.propagate(block);
+
+            synchronized (transactions) {
+                if (transactions.size() >= Block.TRANSACTION_PER_BLOCK) {
+                    miner = new Miner(new Block(0), this);
+
+                    miner.getBlock().getTransactions().addAll(transactions.subList(0, Block.TRANSACTION_PER_BLOCK));
+
+                    transactions.subList(0, Block.TRANSACTION_PER_BLOCK).clear();
+
+                    miner.run();
+                }
+            }
+
         }
 
-        synchronized (transactions){
-            if (transactions.size() > TRANSACTION_PER_BLOCK){
-                ArrayList<Transaction> t = new ArrayList<>(transactions.subList(0,TRANSACTION_PER_BLOCK));
-                transactions.removeAll(t);
-                miner = new Miner(new Block(0, System.currentTimeMillis(), t),this);
-            }
-        }
+        startMining();
 
         this.kademlia.propagate(block);
     }
 
+    private void startMining() {
+        synchronized (transactions) {
+            if (transactions.size() > Block.TRANSACTION_PER_BLOCK) {
+                ArrayList<Transaction> t = new ArrayList<>(transactions.subList(0, Block.TRANSACTION_PER_BLOCK));
+                transactions.removeAll(t);
+                miner = new Miner(new Block(0, System.currentTimeMillis(), t), this);
+            }
+        }
+    }
+
     // called by the network
-    public synchronized boolean store(Block data) {
+    public boolean store(Block data) {
         if (!verify(data)) return false;
 
         synchronized (blocks){
@@ -80,8 +73,9 @@ public class BlockChain {
                 if (Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
                     blocks.add(data);
                 } else if (Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())){
-                    if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp())
-                        blocks.add(data);
+                    if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp()) {
+                        blocks.set(blocks.size() - 1, data);
+                    }
                 }
             }
         }
@@ -92,23 +86,21 @@ public class BlockChain {
                 .map(t -> data.getTransactions().contains(t))
                 .reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
 
-        if (b){
-            miner.stopMining();
-            synchronized (transactions){
-                transactions.addAll(miner.getBlock().getTransactions());
-            }
+        if (!b) {
+            return true;
+        }
+
+        miner.stopMining();
+
+        synchronized (transactions) {
+            transactions.addAll(miner.getBlock().getTransactions());
         }
 
         synchronized (transactions){
             transactions.removeAll(data.getTransactions());
         }
 
-        //start mining if there are enough transactions
-        synchronized (transactions){
-            if (transactions.size() >= TRANSACTION_PER_BLOCK) {
-                miner = new Miner(new Block(0),this);
-            }
-        }
+        startMining();
 
         return true;
     }
@@ -150,13 +142,10 @@ public class BlockChain {
             }
         }
 
-        /*TODO
-        *  Verify extended forking : refer to: https://developer.bitcoin.org/devguide/block_chain.html#id1*/
-        /* Check if the block is really the successor to the previous block by hashing it again and checking the result*/
         return Arrays.equals(block.getHash(), block.calculateHash());
     }
 
-    public synchronized boolean addTransaction(Transaction transaction) {
+    public boolean addTransaction(Transaction transaction) {
         if (!transaction.verify()) {
             return false;
         }
@@ -165,5 +154,6 @@ public class BlockChain {
         }
         return true;
     }
+
 
 }

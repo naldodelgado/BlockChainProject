@@ -2,10 +2,8 @@ package org.example.Blockchain;
 
 public class Miner implements Runnable{
 
-    private Block block;
-
+    private final Block block;
     private boolean isMining = true;
-
     private final BlockChain blockChain;
 
     public Miner(Block block, BlockChain blockChain){
@@ -13,16 +11,8 @@ public class Miner implements Runnable{
         this.blockChain = blockChain;
     }
 
-    public void SetBlock(Block block){
-        this.block = block;
-    }
-
     public void stopMining(){
         isMining = false;
-    }
-
-    public void startMining(){
-        isMining = true;
     }
 
     public Block getBlock(){

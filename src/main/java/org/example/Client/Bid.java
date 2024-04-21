@@ -97,4 +97,17 @@ public class Bid extends Transaction implements Serializable {
         return KeysManager.hash(new Object[]{actionHash, recipientAddress, amount, timestamp});
     }
 
+    @Override
+    public String toString() {
+        return "Bid{" +
+                "transactionId=" + KeysManager.hexString(transactionId) + "\n\t" +
+                "actionHash=" + KeysManager.hexString(actionHash) + "\n\t" +
+                "senderAddress=" + KeysManager.hexString(senderAddress) + "\n\t" +
+                "recipientAddress=" + KeysManager.hexString(recipientAddress) + "\n\t" +
+                "signature=" + KeysManager.hexString(signature) + "\n\t" +
+                "amount=" + amount + "\n\t" +
+                "timestamp=" + timestamp + "\n" +
+                '}';
+    }
+
 }

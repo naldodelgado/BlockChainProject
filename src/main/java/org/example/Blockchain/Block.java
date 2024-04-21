@@ -1,20 +1,22 @@
 package org.example.Blockchain;
 
+import com.google.protobuf.ByteString;
 import kademlia_public_ledger.kBlock;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.example.Client.Transaction;
 import org.example.CryptoUtils.KeysManager;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Block implements Serializable {
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
     private byte[] previousHash = new byte[32]; // Hash of the previous block - will only be defined after mining
-    private static final int MAX_TRANSACTIONS = 8; // Maximum number of transactions in a block must be power of 2
+    public static final int TRANSACTION_PER_BLOCK = 8; // Maximum number of transactions in a block must be power of 2
     private final ArrayList<Transaction> transactions; // List of transactions in this block
     private final long timestamp; // Timestamp of when this block was created
     private int nonce; // Nonce used in mining - this can only be set once. IMMUTABLE
@@ -69,6 +71,19 @@ public class Block implements Serializable {
         }
 
         return newBlock;
+    }
+
+    public kBlock toGrpc() {
+        kBlock.Builder builder = kBlock.newBuilder()
+                .setNonce(nonce)
+                .setTimestamp(timestamp)
+                .addAllTransactions(transactions.stream().map(Transaction::toGrpc).collect(Collectors.toList()));
+
+        if (previousHash != null) {
+            builder.setPrevHash(ByteString.copyFrom(previousHash));
+        }
+
+        return builder.build();
     }
 
     public void setNonce(int nonce) {
@@ -138,5 +153,25 @@ public class Block implements Serializable {
 
     public byte[] calculateHash() {
         return KeysManager.hash(new Object[]{nonce, previousHash, merkleRoot, timestamp});
+    }
+
+    public void store() {
+        File file = new File("blockchain/blocks" + KeysManager.hexString(hash) + ".block");
+        
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+            objectOutputStream.writeObject(this);
+            objectOutputStream.close();
+            fileOutputStream.close();
+
+            //store the transactions
+            for (Transaction t : transactions) {
+                t.store();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

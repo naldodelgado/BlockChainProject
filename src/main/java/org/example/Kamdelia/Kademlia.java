@@ -1,6 +1,5 @@
 package org.example.Kamdelia;
 
-import com.google.protobuf.ByteString;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import kademlia_public_ledger.kBlock;
@@ -8,18 +7,21 @@ import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
 import org.example.Blockchain.Block;
 import org.example.Client.Transaction;
+import org.example.CryptoUtils.KeysManager;
 
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class Kademlia {
     private final RouteTable routeTable;
     private final Server server;
     private final Logger logger = Logger.getLogger(Kademlia.class.getName());
+    private final static ExecutorService executor = Executors.newScheduledThreadPool(1);
     public final static byte[] genesisIP = new byte[]{127, 0, 0, 1};
     public final static int genesisPort = 5000;
 
@@ -63,20 +65,21 @@ public class Kademlia {
         }
     }
 
+    // this should asynchronously propagate the block
     public void propagate(Block data) {
-        kBlock block = kBlock.newBuilder()
-                .setHash(ByteString.copyFrom(data.getHash()))
-                .setPrevHash(data.getPreviousHash() == null ? ByteString.EMPTY : ByteString.copyFrom(data.getPreviousHash()))
-                .setTimestamp(data.getTimestamp())
-                .setNonce(data.getNonce())
-                .addAllTransactions(data.getTransactions().stream().map(t -> t.toGrpc()).collect(Collectors.toList()))
-                .build();
 
-        routeTable.propagate(block);
+        executor.submit(() -> {
+            logger.info("Propagating block: " + KeysManager.hexString(data.getHash()));
+            routeTable.propagate(data.toGrpc());
+        });
     }
 
+    // this should asynchronously propagate the transaction
     public void propagate(Transaction data) {
-        routeTable.propagate(data.toGrpc());
+        executor.submit(() -> {
+            logger.info("Propagating transaction: " + data);
+            routeTable.propagate(data.toGrpc());
+        });
     }
 
     public void setBlockStorageFunction(Function<kBlock, Boolean> blockStorageFunction) {

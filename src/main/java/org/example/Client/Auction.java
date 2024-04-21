@@ -103,6 +103,19 @@ public class Auction extends Transaction {
         return hash;
     }
 
+    @Override
+    public String toString() {
+        return "Auction{" +
+                "idItem=" + KeysManager.hexString(idItem) + "\n\t" +
+                "minAmount=" + minAmount + "\n\t" +
+                "minIncrement=" + minIncrement + "\n\t" +
+                "timeout=" + timeout + "\n\t" +
+                "sellerPublicKey=" + KeysManager.hexString(sellerPublicKey.getEncoded()) + "\n\t" +
+                "hash=" + KeysManager.hexString(hash) + "\n\t" +
+                "signature=" + KeysManager.hexString(signature) + "\n" +
+                '}';
+    }
+
     //Getters
     public PublicKey getSellerPublicKey() {
         return sellerPublicKey;

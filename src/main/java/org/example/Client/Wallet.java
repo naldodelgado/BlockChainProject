@@ -1,5 +1,7 @@
 package org.example.Client;
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.example.Blockchain.BlockChain;
 import org.example.CryptoUtils.KeysManager;
 
 import java.security.KeyPair;
@@ -13,65 +15,65 @@ public class Wallet {
 
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
-    private final List<Transaction> transactions = new ArrayList<>();
+    // bids done by this wallet with the auction they belong to
+    private final List<Pair<Bid, Auction>> bids = new ArrayList<>();
+    // auctions started by this wallet with the bids they have received
+    private final List<Pair<Auction, List<Bid>>> auctions = new ArrayList<>();
+    private final BlockChain blockChain;
 
-    public Wallet(PublicKey publicKey, PrivateKey privateKey) {
+    public Wallet(PublicKey publicKey, PrivateKey privateKey, BlockChain blockChain) {
+        this.blockChain = blockChain;
         this.privateKey=privateKey;
         this.publicKey=publicKey;
     }
 
-    public Wallet() {
+    public Wallet(BlockChain blockChain) {
+        this.blockChain = blockChain;
         KeyPair keyPair = KeysManager.generateKeys();
         this.privateKey = keyPair.getPrivate();
         this.publicKey = keyPair.getPublic();
     }
 
     public void startAuction(byte[] idItem, int minAmount, int minIncrement, long timeout) {
-        transactions.add(new Auction(idItem, minAmount, minIncrement, timeout, this));
+        auctions.add(Pair.of(new Auction(idItem, minAmount, minIncrement, timeout, this), new ArrayList<>()));
+
     }
 
-    public void bid(byte[] idItem, PublicKey sellerKey, int amount) {
-        transactions.add(new Bid(idItem, publicKey, sellerKey, amount, privateKey));
+    public void bid(Auction auction, PublicKey sellerKey, int amount) {
+        bids.add(Pair.of(new Bid(auction.getHash(), publicKey, sellerKey, amount, privateKey), auction));
+        blockChain.addTransaction(bids.get(bids.size() - 1).getLeft());
     }
 
-    public List<Transaction> getTransactions() {
-        return transactions;
-    }
-
-    public List<Auction> getAuctions() {
-        return transactions
+    public List<Bid> getBids() {
+        return bids
                 .stream()
-                .filter(transaction -> transaction instanceof Auction)
-                .map(transaction -> (Auction) transaction)
+                .map(Pair::getLeft)
                 .collect(Collectors.toList());
     }
 
-    public List<Auction> getOnGoingAuctions() {
-        return transactions
+    public List<Pair<Auction, List<Bid>>> getAuctions() {
+        return auctions;
+    }
+
+    public List<Pair<Auction, List<Bid>>> getOnGoingAuctions() {
+        return auctions
                 .stream()
-                .filter(transaction -> transaction instanceof Auction)
-                .map(transaction -> (Auction) transaction)
-                .filter(auction -> auction.getTimeout() > System.currentTimeMillis())
+                .filter(auction -> auction.getLeft().getTimeout() > System.currentTimeMillis())
                 .collect(Collectors.toList());
     }
 
     public List<Bid> getMyBids(Auction action) {
-        return transactions
+        return auctions
                 .stream()
-                .filter(transaction -> transaction instanceof Bid)
-                .map(transaction -> (Bid) transaction)
-                .filter(bid -> bid.getActionHash().equals(action.get_idItem()))
-                .collect(Collectors.toList());
+                .filter(auction -> auction.getLeft().equals(action))
+                .findFirst()
+                .map(Pair::getRight)
+                .orElse(new ArrayList<>());
     }
 
-    public List<Bid> getMyBids() {
-        return transactions
-                .stream()
-                .filter(transaction -> transaction instanceof Bid)
-                .map(transaction -> (Bid) transaction)
-                .collect(Collectors.toList());
+    public List<Pair<Bid, Auction>> getMyBids() {
+        return bids;
     }
-
 
     //Getters
     public PrivateKey getPrivateKey() {

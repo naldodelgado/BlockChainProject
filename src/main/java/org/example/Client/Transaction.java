@@ -10,14 +10,6 @@ public abstract class Transaction {
         }
     }
 
-    public static kademlia_public_ledger.kTransaction toGrpc(Transaction transaction) {
-        if (transaction instanceof Bid) {
-            return transaction.toGrpc();
-        } else {
-            return transaction.toGrpc();
-        }
-    }
-
     public abstract kademlia_public_ledger.kTransaction toGrpc();
 
     public abstract boolean verify();
@@ -25,5 +17,8 @@ public abstract class Transaction {
     public abstract void store();
 
     public abstract byte[] hash();
+
+    @Override
+    public abstract String toString();
 
 }
