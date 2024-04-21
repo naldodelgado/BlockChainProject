@@ -1,5 +1,7 @@
 package org.example.Blockchain;
 
+import org.example.Client.Transaction;
+import org.example.CryptoUtils.KeysManager;
 import org.example.Kamdelia.Kademlia;
 
 import java.io.File;
@@ -24,12 +26,38 @@ public class BlockChain {
         this.kademlia = kademlia;
     }
 
+    private static void storeBlock(Block block) {
+        File file = new File("blockchain/blocks" + KeysManager.hexString(block.getHash()) + ".block");
+
+        // TODO: deal with hash collision
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+            objectOutputStream.writeObject(block);
+            objectOutputStream.close();
+            fileOutputStream.close();
+
+            //store the transactions
+            for (Transaction t : block.getTransactions()) {
+                t.store();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void propagateBlock(Block block) {
         synchronized (blocks){
             if (!Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
                 return;
             }
+            if (blocks.size() > 10) {
+                storeBlock(blocks.remove(0));
+            }
+
             blocks.add(block);
+            kademlia.propagate(block);
         }
 
         synchronized (transactions){
@@ -55,29 +83,26 @@ public class BlockChain {
                     if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp())
                         blocks.add(data);
                 }
-
-                Arrays.compare(data.getPreviousHash(), blocks.get(blocks.size() - 1).getHash());
             }
-
         }
 
         boolean b = miner.getBlock()
-                .getBids()
+                .getTransactions()
                 .stream()
-                .map(t -> data.getBids().contains(t))
+                .map(t -> data.getTransactions().contains(t))
                 .reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
 
         if (b){
             miner.stopMining();
             synchronized (transactions){
-                transactions.addAll(miner.getBlock().getBids());
+                transactions.addAll(miner.getBlock().getTransactions());
             }
         }
 
         synchronized (transactions){
-            transactions.removeAll(data.getBids());
+            transactions.removeAll(data.getTransactions());
         }
-        
+
         //start mining if there are enough transactions
         synchronized (transactions){
             if (transactions.size() >= TRANSACTION_PER_BLOCK) {
@@ -90,8 +115,8 @@ public class BlockChain {
 
     private boolean verify(Block block) {
         //are the transactions valid?
-        for(Transaction t : block.getBids()) {
-            if (!verifyTransaction(t)) {
+        for (Transaction t : block.getTransactions()) {
+            if (t.verify()) {
                 return false;
             }
         }
@@ -132,48 +157,13 @@ public class BlockChain {
     }
 
     public synchronized boolean addTransaction(Transaction transaction) {
-        if (!verifyTransaction(transaction)) {
+        if (!transaction.verify()) {
             return false;
         }
         synchronized (transactions){
             transactions.add(transaction);
         }
         return true;
-    }
-
-    private boolean verifyTransaction(Transaction transaction) {
-        //is the signature valid?
-        //TODO: verify the signature
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
-    private static void storeBlock(Block block) {
-        File file = new File("blockchain/" + hexString( block.getHash()) + ".block");
-
-        // TODO: deal with hash collision
-
-        try {
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-            objectOutputStream.writeObject(block);
-            objectOutputStream.close();
-            fileOutputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    public static String hexString(byte[] byteArray)
-    {
-        String hex = "";
-
-        // Iterating through each byte in the array
-        for (byte i : byteArray) {
-            hex += String.format("%02X", i);
-        }
-
-        return hex;
     }
 
 }

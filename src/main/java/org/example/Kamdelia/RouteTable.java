@@ -29,9 +29,9 @@ class RouteTable {
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
     private final Logger log;
     private Function<kBlock, Boolean> blockStorageFunction;
-    private Function<Bid, Boolean> transactionStorageFunction;
+    private final InetAddress myIp = Inet4Address.getLocalHost();
     private final PoissonProcess poissonProcess = new PoissonProcess(4, new Random((int) (Math.random() * 1000)));
-    private final byte[] myIp = Inet4Address.getLocalHost().getAddress();
+    private Function<kTransaction, Boolean> transactionStorageFunction;
     private final int myPort = 5000;
     private byte[] previousRandomKey = new byte[20];
 
@@ -145,22 +145,8 @@ class RouteTable {
         executorService.schedule(this::updateKbuckets, t, TimeUnit.SECONDS);
     }
 
-    public Iterable<Node> findNode(ByteString id) {
-        int index = BitSet.valueOf(distance(id.toByteArray(), this.id)).nextSetBit(0) - 1;
-
-        if (index > -1) {
-            return kBuckets[index].stream().map(Pair::getLeft).map(KNode::toNode).collect(Collectors.toCollection(ArrayList::new));
-        }
-
-        if (index == -1)
-            return Collections.singleton(
-                Node.newBuilder()
-                    .setId(ByteString.copyFrom(this.id))
-                    .setIp(ByteString.copyFrom(myIp))
-                    .setPort(myPort)
-                    .build());
-
-        return Collections.emptyList();
+    private static String IPtoString(byte[] ip) {
+        return String.format("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
     }
 
     public void add(List<Node> nodes) {
@@ -235,14 +221,32 @@ class RouteTable {
         });
     }
 
-    public void propagate(Bid data) {
-        log.info(String.format("Storing transaction with signature %s", Arrays.toString(data.getSignature().toByteArray())));
-        KNode sender = KNode.fromNode(data.getSenderNode());
+    public Iterable<Node> findNode(ByteString id) {
+        int index = BitSet.valueOf(distance(id.toByteArray(), this.id)).nextSetBit(0) - 1;
+
+        if (index > -1) {
+            return kBuckets[index].stream().map(Pair::getLeft).map(KNode::toNode).collect(Collectors.toCollection(ArrayList::new));
+        }
+
+        if (index == -1)
+            return Collections.singleton(
+                    Node.newBuilder()
+                            .setId(ByteString.copyFrom(this.id))
+                            .setIp(ByteString.copyFrom(myIp.getAddress()))
+                            .setPort(myPort)
+                            .build());
+
+        return Collections.emptyList();
+    }
+
+    public void propagate(kTransaction data) {
+        log.info(String.format("Storing transaction with signature %s", data));
+        KNode sender = KNode.fromNode(data.getSender());
 
         int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(sender.getId(), id)).nextSetBit(0);
 
         if (!transactionStorageFunction.apply(data)) {
-            log.info(String.format("Transaction with signature %s is invalid", Arrays.toString(data.getSignature().toByteArray())));
+            log.info(String.format("Transaction with signature %s is invalid", data));
             return;
         }
 
@@ -256,32 +260,23 @@ class RouteTable {
 
                 try {
                     log.info(String.format("Propagating Transaction with signature %s to node %s %s",
-                            Arrays.toString(data.getSignature().toByteArray()), Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
-                    ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
+                            data, Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
+
+                    ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).build();
                     ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
 
-                    Bid.Builder bid = Bid.newBuilder()
-                            .setSignature(data.getSignature())
-                            .setSender(data.getSender())
-                            .setReceiver(data.getReceiver())
-                            .setAmount(data.getAmount())
-                            .setTimestamp(data.getTimestamp());
+                    Node thisNode = Node.newBuilder()
+                            .setId(ByteString.copyFrom(id))
+                            .setIp(ByteString.copyFrom(myIp.getAddress()))
+                            .setPort(myPort).build();
 
-                    if (data.hasSenderNode())
-                        bid.setSenderNode(data.getSenderNode());
+                    if (data.hasAuction())
+                        stub.storeTransaction(kTransaction.newBuilder().setAuction(data.getAuction()).setSender(thisNode).build());
                     else
-                        bid.setSenderNode(Node.newBuilder()
-                                .setId(ByteString.copyFrom(id))
-                                .setIp(ByteString.copyFrom(myIp))
-                                .setPort(myPort));
-
-                    stub.storeTransaction(kTransaction.newBuilder().setBid(bid.build()).build());
+                        stub.storeTransaction(kTransaction.newBuilder().setBid(data.getBid()).setSender(thisNode).build());
 
                     update(kBuckets[i], node);
-
                     break;
-                } catch (UnknownHostException e) {
-                    throw new RuntimeException(e);
                 } catch (StatusRuntimeException e) {
                     log.info(String.format("Node %s %s did not respond to store error %s",
                             Arrays.toString(node.getIp()), Arrays.toString(node.getId()), e.getStatus().getCode()));
@@ -302,7 +297,7 @@ class RouteTable {
                         Node.newBuilder()
                                 .setId(ByteString.copyFrom(id))
                                 .setPort(myPort)
-                                .setIp(ByteString.copyFrom(myIp))
+                                .setIp(ByteString.copyFrom(myIp.getAddress()))
                                 .build()
                 );
                 log.info(String.format("Node %s %s responded to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
@@ -409,7 +404,7 @@ class RouteTable {
         this.blockStorageFunction = blockStorageFunction;
     }
 
-    public void setTransactionStorageFunction(Function<Bid, Boolean> transactionStorageFunction) {
+    public void setTransactionStorageFunction(Function<kTransaction, Boolean> transactionStorageFunction) {
         this.transactionStorageFunction = transactionStorageFunction;
     }
 

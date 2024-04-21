@@ -6,7 +6,7 @@ public class Miner implements Runnable{
 
     private boolean isMining = true;
 
-    private BlockChain blockChain;
+    private final BlockChain blockChain;
 
     public Miner(Block block, BlockChain blockChain){
         this.block = block;
@@ -36,7 +36,7 @@ public class Miner implements Runnable{
         }
 
         if(block.isNonceValid()){
-            blockChain.addBlock(block);
+            blockChain.propagateBlock(block);
         }
     }
 

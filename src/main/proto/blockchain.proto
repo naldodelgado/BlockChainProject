@@ -30,12 +30,14 @@ message FindKeyReturn {
 }
 
 message Auction {
+  bytes itemID = 1;
     bytes key = 2;
     int64 timeout = 3;
     bytes signature = 4;
     bytes hash = 5;
     int32 highest = 6;
     int32 startBid = 7;
+  int32 minBid = 8;
 }
 
 message KBucket {
@@ -54,9 +56,9 @@ message kBlock {
 }
 
 message Bid {
-    Node senderNode = 1;
-    bytes sender = 2;
-    bytes receiver = 3;
+  bytes sender = 1;
+  bytes receiver = 2;
+  bytes itemID = 3;
     int32 amount = 4;
     bytes signature = 5;
     int64 timestamp = 6;

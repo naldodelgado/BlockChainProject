@@ -1,9 +1,9 @@
 package org.example.Blockchain;
 
-import kademlia_public_ledger.Bid;
 import kademlia_public_ledger.kBlock;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.example.Client.Transaction;
 import org.example.CryptoUtils.KeysManager;
 
 import java.io.Serializable;
@@ -14,28 +14,28 @@ import java.util.List;
 public class Block implements Serializable {
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
     private byte[] previousHash = new byte[32]; // Hash of the previous block - will only be defined after mining
-    private final ArrayList<Transaction> bids; // List of transactions in this block
-    private static final int MAX_TRANSACTIONS = 5; // Maximum number of transactions in a block
-    private long timestamp; // Timestamp of when this block was created
+    private static final int MAX_TRANSACTIONS = 8; // Maximum number of transactions in a block must be power of 2
+    private final ArrayList<Transaction> transactions; // List of transactions in this block
+    private final long timestamp; // Timestamp of when this block was created
     private int nonce; // Nonce used in mining - this can only be set once. IMMUTABLE
     private byte[] merkleRoot = new byte[32]; // Merkle root of the transactions in this block
     static int numZeros = 0; // Number of zeros required at the start of the hash
 
     // Constructor
     public Block(int nonce) {
-        this.bids = new ArrayList<>();
+        this.transactions = new ArrayList<>();
         this.nonce = nonce;
         this.timestamp = new Date().getTime();
     }
 
     public Block(int nonce, long timestamp) {
-        this.bids = new ArrayList<>();
+        this.transactions = new ArrayList<>();
         this.nonce = nonce;
         this.timestamp = timestamp;
     }
 
     public Block(int nonce, long timestamp, ArrayList<Transaction> transactions) {
-        this.bids = transactions;
+        this.transactions = transactions;
         this.nonce = nonce;
         this.timestamp = timestamp;
         this.merkleRoot = calculateMerkleRoot();
@@ -64,8 +64,8 @@ public class Block implements Serializable {
     public static Block fromGrpc(kBlock block) {
         Block newBlock = new Block(block.getNonce(), block.getTimestamp());
 
-        for (Bid transaction : block.getBidsList()) {
-            newBlock.bids.add(Transaction.fromGrpc(transaction));
+        for (kademlia_public_ledger.kTransaction transaction : block.getTransactionsList()) {
+            newBlock.transactions.add(Transaction.fromGrpc(transaction));
         }
 
         return newBlock;
@@ -84,8 +84,8 @@ public class Block implements Serializable {
         this.previousHash = previousHash;
     }
 
-    public ArrayList<Transaction> getBids() {
-        return bids;
+    public ArrayList<Transaction> getTransactions() {
+        return transactions;
     }
 
     public long getTimestamp() {
@@ -99,12 +99,12 @@ public class Block implements Serializable {
     public byte[] calculateMerkleRoot() {
         List<byte[]> hashes = new ArrayList<>();
 
-        for (int i = 0; i < bids.size(); i += 2) {
+        for (int i = 0; i < transactions.size(); i += 2) {
             // hash the transaction
-            byte[] hash = bids.get(i).calculateHash();
+            hashes.add(transactions.get(i).hash());
         }
 
-         return calculateMerkleRoot(hashes);
+        return calculateMerkleRoot(hashes);
     }
 
     private byte[] calculateMerkleRoot(List<byte[]> hashes) {

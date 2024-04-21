@@ -107,4 +107,15 @@ public class KeysManager {
             return false;
         }
     }
+
+    public static String hexString(byte[] byteArray) {
+        StringBuilder hex = new StringBuilder();
+
+        // Iterating through each byte in the array
+        for (byte i : byteArray) {
+            hex.append(String.format("%02X", i));
+        }
+
+        return hex.toString();
+    }
 }

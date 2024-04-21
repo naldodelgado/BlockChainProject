@@ -2,9 +2,9 @@ package org.example;
 
 import org.example.Blockchain.Block;
 import org.example.Blockchain.BlockChain;
+import org.example.Client.Transaction;
 import org.example.Kamdelia.Kademlia;
 import org.example.poisson.PoissonProcess;
-import org.example.Blockchain.Transaction;
 
 import java.io.IOException;
 import java.util.Random;

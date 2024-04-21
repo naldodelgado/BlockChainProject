@@ -3,13 +3,11 @@ package org.example.Kamdelia;
 import com.google.protobuf.ByteString;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import kademlia_public_ledger.Bid;
 import kademlia_public_ledger.kBlock;
-import kademlia_public_ledger.kTransaction;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
 import org.example.Blockchain.Block;
-import org.example.Blockchain.Transaction;
+import org.example.Client.Transaction;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -71,31 +69,14 @@ public class Kademlia {
                 .setPrevHash(data.getPreviousHash() == null ? ByteString.EMPTY : ByteString.copyFrom(data.getPreviousHash()))
                 .setTimestamp(data.getTimestamp())
                 .setNonce(data.getNonce())
-                .addAllTransactions(
-                    data.getBids().stream().map(t ->
-                        kTransaction.newBuilder().setBid(
-                            Bid.newBuilder()
-                                .setSender(ByteString.copyFrom(t.getRecipientAddress()))
-                                .setReceiver(ByteString.copyFrom(t.getRecipientAddress()))
-                                .setAmount(t.getAmount())
-                                .setTimestamp(t.getTimestamp())
-                                .build()
-                        ).build()
-                    ).collect(Collectors.toList())
-                ).build();
+                .addAllTransactions(data.getTransactions().stream().map(t -> t.toGrpc()).collect(Collectors.toList()))
+                .build();
 
         routeTable.propagate(block);
     }
 
     public void propagate(Transaction data) {
-        Bid transaction = Bid.newBuilder()
-                .setSender(ByteString.copyFrom(data.getActionID()))
-                .setReceiver(ByteString.copyFrom(data.getRecipientAddress()))
-                .setAmount(data.getAmount())
-                .setTimestamp(data.getTimestamp())
-                .build();
-
-        routeTable.propagate(transaction);
+        routeTable.propagate(data.toGrpc());
     }
 
     public void setBlockStorageFunction(Function<kBlock, Boolean> blockStorageFunction) {
@@ -103,7 +84,7 @@ public class Kademlia {
         routeTable.setBlockStorageFunction(blockStorageFunction);
     }
 
-    public void setTransactionStorageFunction(Function<Bid, Boolean> transactionStorageFunction) {
+    public void setTransactionStorageFunction(Function<kademlia_public_ledger.kTransaction, Boolean> transactionStorageFunction) {
         // the function should return true if the transaction is valid and stored, false otherwise
         routeTable.setTransactionStorageFunction(transactionStorageFunction);
     }

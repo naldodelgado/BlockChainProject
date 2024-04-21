@@ -74,7 +74,7 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
         responseObserver.onNext(response);
         responseObserver.onCompleted();
 
-        routeTable.add(KNode.fromNode(request.getSenderNode()));
+        routeTable.add(KNode.fromNode(request.getSender()));
 
         routeTable.propagate(request);
     }
