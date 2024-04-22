@@ -1,10 +1,5 @@
-FROM openjdk:17
+FROM amazoncorretto:20-alpine
 MAINTAINER baeldung.com
-COPY /target/ds-chat.jar peer.jar
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install tcpdump -y && \
-    apt-get install iputils-ping -y
+COPY /target /
 
-
-ENTRYPOINT ["java", "-jar", "./peer.jar"]
+ENTRYPOINT ["java", "-jar", "./BlockChainProject-1.0-SNAPSHOT.jar"]
