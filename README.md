@@ -68,3 +68,4 @@ Therefore, you should include the nonce field only in the Block data structure f
 - [ ] How far back does the extended forking go?
 - [ ] Should I deal with cloned bids?
 - [ ] Can I validate that a block is sent to all the nodes in a kbucket by querying it after some time
+- [ ] Validate requests

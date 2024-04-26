@@ -10,6 +10,10 @@ public abstract class Transaction {
         }
     }
 
+    public static Transaction fromStorage(String id) {
+        return null;
+    }
+
     public abstract kademlia_public_ledger.kTransaction toGrpc();
 
     public abstract boolean verify();

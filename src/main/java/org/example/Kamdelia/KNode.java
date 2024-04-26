@@ -2,6 +2,9 @@ package org.example.Kamdelia;
 
 import com.google.protobuf.ByteString;
 import kademlia_public_ledger.Node;
+import org.example.CryptoUtils.KeysManager;
+
+import java.util.Arrays;
 
 class KNode {
     private final byte[] id;
@@ -34,5 +37,18 @@ class KNode {
 
     public Node toNode() {
         return Node.newBuilder().setId(ByteString.copyFrom(id)).setIp(ByteString.copyFrom(ip)).setPort(port).build();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof KNode))
+            return false;
+
+        return Arrays.equals(ip, ((KNode) obj).ip) && port == ((KNode) obj).port;
+    }
+
+    @Override
+    public String toString() {
+        return NetUtils.IPtoString(ip) + ":" + port + " " + KeysManager.hexString(id);
     }
 }

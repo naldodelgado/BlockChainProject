@@ -2,6 +2,7 @@ package org.example.Kamdelia;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.ServerInterceptors;
 import kademlia_public_ledger.kBlock;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
@@ -12,6 +13,7 @@ import org.example.CryptoUtils.KeysManager;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -22,7 +24,7 @@ public class Kademlia {
     private final Server server;
     private final Logger logger = Logger.getLogger(Kademlia.class.getName());
     private final static ExecutorService executor = Executors.newScheduledThreadPool(1);
-    public final static byte[] genesisIP = new byte[]{127, 0, 0, 1};
+    public final static byte[] genesisIP = new byte[]{(byte) 172, 17, 0, 2};
     public final static int genesisPort = 5000;
 
     public Kademlia(int port) throws IOException {
@@ -35,7 +37,10 @@ public class Kademlia {
         assert id.length == 20;
 
         routeTable = new RouteTable(id,logger);
-        server = ServerBuilder.forPort(port).addService(new KademliaAPI(routeTable,logger)).build();
+        server = ServerBuilder
+                .forPort(port)
+                .addService(ServerInterceptors.intercept(new KademliaAPI(routeTable, logger), new Interceptor()))
+                .build();
     }
 
     static byte[] createSHA1Hash(String s) {
@@ -67,7 +72,6 @@ public class Kademlia {
 
     // this should asynchronously propagate the block
     public void propagate(Block data) {
-
         executor.submit(() -> {
             logger.info("Propagating block: " + KeysManager.hexString(data.getHash()));
             routeTable.propagate(data.toGrpc());
@@ -90,6 +94,26 @@ public class Kademlia {
     public void setTransactionStorageFunction(Function<kademlia_public_ledger.kTransaction, Boolean> transactionStorageFunction) {
         // the function should return true if the transaction is valid and stored, false otherwise
         routeTable.setTransactionStorageFunction(transactionStorageFunction);
+    }
+
+    public void setBlockStorageGetter(Function<String, Optional<Block>> blockStorageFunction) {
+        // the function should return true if the block is valid and stored, false otherwise
+        routeTable.getBlockStorageFunction(blockStorageFunction);
+    }
+
+    public void setTransactionStorageGetter(Function<String, Optional<Transaction>> transactionStorageFunction) {
+        // the function should return true if the transaction is valid and stored, false otherwise
+        routeTable.getTransactionStorageFunction(transactionStorageFunction);
+    }
+
+    public Block getBlock(byte[] hash, long index) {
+        //TODO
+        throw new UnsupportedOperationException();
+    }
+
+    public Transaction getTransaction(byte[] hash) {
+        //TODO
+        throw new UnsupportedOperationException();
     }
 
     public void stop() {

@@ -39,7 +39,7 @@ public class Bid extends Transaction implements Serializable {
     }
 
     public static Bid fromGrpc(kademlia_public_ledger.Bid bid) {
-        byte[] senderAddress = bid.getSender().toByteArray();// public key
+        byte[] senderAddress = bid.toByteArray();// public key
         byte[] recipientAddress = bid.getReceiver().toByteArray(); // public key
         byte[] signature = bid.getSignature().toByteArray();
         byte[] actionID = bid.getItemID().toByteArray();

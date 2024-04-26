@@ -1,22 +1,57 @@
 package org.example.Blockchain;
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.example.Client.Auction;
+import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Kamdelia.Kademlia;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 public class BlockChain {
-
     private final List<Block> blocks; // limit 10 block at a time
     private final List<Transaction> transactions;
     private Miner miner;
     private final Kademlia kademlia;
+    private List<Pair<Auction, Bid>> activeBids;
 
     public BlockChain(Kademlia kademlia) {
         kademlia.setBlockStorageFunction((t) -> store(Block.fromGrpc(t)));
         kademlia.setTransactionStorageFunction((t) -> addTransaction(Transaction.fromGrpc(t)));
+
+        kademlia.setBlockStorageGetter((hash) -> {
+            String filePath = "Blocks/" + hash + ".block";
+            try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+                int nonce = Integer.parseInt(reader.readLine().trim());
+                long timestamp = Long.parseLong(reader.readLine().trim());
+                ArrayList<Transaction> transactions = new ArrayList<>();
+
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+
+                    String transactionFilePath = "Transactions/" + line.trim() + ".transaction";
+                    BufferedReader transactionReader = new BufferedReader(new FileReader(transactionFilePath));
+
+                    Transaction transaction = Transaction.fromStorage(line.trim());
+                    transactions.add(transaction);
+                    transactionReader.close(); // Close file reader to avoid resource leak
+                }
+
+                // Create and return a new Block object
+                return Optional.of(new Block(nonce, timestamp, transactions));
+            } catch (IOException e) {
+                System.err.println("Error reading from file: " + e.getMessage());
+                return Optional.empty();
+            }
+        });
+        kademlia.setTransactionStorageGetter((t) -> Optional.empty());
         this.transactions = new ArrayList<>();
         this.blocks = new ArrayList<>();
         this.kademlia = kademlia;
@@ -27,7 +62,7 @@ public class BlockChain {
             if (!Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
                 return;
             }
-            kademlia.propagate(block);
+            kademlia.propagate(block); // this call is asynchronous
 
             if (blocks.size() > 10) {
                 blocks.remove(0).store();
@@ -59,7 +94,11 @@ public class BlockChain {
             if (transactions.size() > Block.TRANSACTION_PER_BLOCK) {
                 ArrayList<Transaction> t = new ArrayList<>(transactions.subList(0, Block.TRANSACTION_PER_BLOCK));
                 transactions.removeAll(t);
-                miner = new Miner(new Block(0, System.currentTimeMillis(), t), this);
+
+                Block block = new Block(0, System.currentTimeMillis(), t);
+                block.setPreviousHash(transactions.getLast().hash());
+
+                miner = new Miner(block, this);
             }
         }
     }

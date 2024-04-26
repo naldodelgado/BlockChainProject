@@ -1,13 +1,16 @@
 package org.example.Kamdelia;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import kademlia_public_ledger.*;
 import org.apache.commons.lang3.tuple.Pair;
+import org.example.Blockchain.Block;
+import org.example.Client.Transaction;
+import org.example.CryptoUtils.KeysManager;
 import org.example.poisson.PoissonProcess;
 
 import java.net.Inet4Address;
@@ -20,64 +23,136 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.example.Kamdelia.Kademlia.createSHA1Hash;
+import static org.example.Kamdelia.Kademlia.genesisIP;
+import static org.example.Kamdelia.Kademlia.genesisPort;
+import static org.example.Kamdelia.NetUtils.IPtoString;
 
 class RouteTable {
     private final byte[] id;
-    private static final int K = 5;
+    private static final int K = 20;
     private final Queue<Pair<KNode,ScheduledFuture<?>>>[] kBuckets;
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
     private final Logger log;
-    private Function<kBlock, Boolean> blockStorageFunction;
     private final InetAddress myIp = Inet4Address.getLocalHost();
-    private final PoissonProcess poissonProcess = new PoissonProcess(4, new Random((int) (Math.random() * 1000)));
-    private Function<kTransaction, Boolean> transactionStorageFunction;
     private final int myPort = 5000;
-    private byte[] previousRandomKey = new byte[20];
+    //private byte[] previousRandomKey = new byte[20];
+    private Function<kBlock, Boolean> blockStorageFunction;
+    private Function<kTransaction, Boolean> transactionStorageFunction;
+    private Function<String, Optional<Block>> getBlockStorageFunction;
+    private Function<String, Optional<Transaction>> getTransactionStorageFunction;
+    private final PoissonProcess poissonProcess = new PoissonProcess(4, new Random((int) (Math.random() * 1000)));
 
     public RouteTable(byte[] id, Logger logger) throws UnknownHostException {
         log = logger;
         this.id = id;
         kBuckets = new Queue[id.length * 8 - 1];
         for (int i = 0; i < id.length * 8 - 1; i++) {
-            kBuckets[i] = new ArrayBlockingQueue<>(Math.min(K, 1 << Math.min(i, 31)));
+            kBuckets[i] = new ArrayBlockingQueue<>(Math.min(K, 1 << Math.min(i, 30)));
         }
     }
 
+    public static boolean checkEquality(byte[] ip1, byte[] ip2) {
+        for (int i = 0; i < ip1.length; i++) {
+            if ((ip1[i] ^ ip2[i]) != 0)
+                return false;
+        }
+        return true;
+    }
+
     public void start() {
+        // || getTransactionStorageFunction == null || getBlockStorageFunction == null
         if (blockStorageFunction == null || transactionStorageFunction == null) {
             throw new IllegalStateException("BlockStorageFunction and TransactionStorageFunction must be set before starting the route table");
         }
 
-        executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent(), TimeUnit.SECONDS);
+        log.info("started with id: " + KeysManager.hexString(id));
+        //executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent() * 1000, TimeUnit.SECONDS);
+
+
+        /*
+        executorService.schedule(() ->{
+            int i = 0;
+            for (var kBucket : kBuckets){
+                for (var node: kBucket){
+                    log.info(node.getLeft() + "Kbucket id: " + i);
+                }
+                i++;
+            }
+        },40,TimeUnit.SECONDS);
+         */
+
+
+        try {
+            if (checkEquality(InetAddress.getLocalHost().getAddress(), genesisIP)) {
+                return;
+            }
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
 
         new Thread(() -> {
             // try to fill k-buckets with nodes from the network
             try {
-                Channel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(Kademlia.genesisIP).getHostAddress(), Kademlia.genesisPort).usePlaintext().build();
+                Thread.sleep((long) (Math.random() * 20 * 1000));
+                Channel channel = NettyChannelBuilder.forAddress(InetAddress.getByAddress(genesisIP).getHostAddress(), genesisPort).usePlaintext().build();
                 ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
-                log.info("Finding nodes in the network");
+                log.info("Finding nodes in the network from: " + IPtoString(genesisIP));
 
-                KBucket response = stub.findNode(Node.newBuilder().setId(ByteString.copyFrom(id)).build());
+                KBucket response = stub.findNode(
+                        KeyWithSender
+                                .newBuilder()
+                                .setKey(ByteString.copyFrom(id))
+                                .setSender(ByteString.copyFrom(id))
+                                .build()
+                );
                 log.info(String.format("Found %d nodes in the network", response.getNodesCount()));
 
                 List<Node> nodes = response.getNodesList();
+
                 add(nodes);
 
+                log.info("received nodes: " + nodes.stream().map(KNode::fromNode));
+
                 for (Node node : nodes) {
-                    channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp().toByteArray()).getHostAddress(), node.getPort()).usePlaintext().build();
+                    if (Arrays.equals(node.getId().toByteArray(), id) || (Arrays.equals(node.getIp().toByteArray(), genesisIP) && node.getPort() == genesisPort))
+                        continue;
+
+                    log.info(String.format(
+                            "Finding nodes in the network from node %s %s",
+                            Arrays.toString(InetAddress.getByAddress(node.getIp().toByteArray()).getAddress()),
+                            KeysManager.hexString(node.getId().toByteArray())
+                    ));
+
+                    channel = ManagedChannelBuilder.forAddress(
+                            InetAddress.getByAddress(node.getIp().toByteArray()).getHostAddress(),
+                            node.getPort()
+                    ).usePlaintext().build();
                     stub = ServicesGrpc.newBlockingStub(channel);
 
-                    log.info(String.format("Finding nodes in the network from node %s %s", Arrays.toString(node.getIp().toByteArray()), Arrays.toString(node.getId().toByteArray())));
+                    var newNodes = stub.findNode(
+                            KeyWithSender
+                                    .newBuilder()
+                                    .setKey(ByteString.copyFrom(id))
+                                    .setSender(ByteString.copyFrom(id))
+                                    .build()
+                    );
 
-                    add(stub.findNode(node).getNodesList());
+                    Thread.sleep(1000);
+
+                    log.info("response from" + Arrays.toString(newNodes.getSender().toByteArray()) + " " + Arrays.toString(node.getIp().toByteArray()) + ":" + node.getPort());
+
+                    log.info(newNodes.getNodesList().stream().map(KNode::fromNode).collect(Collectors.toList()).toString());
+
+                    add(newNodes.getNodesList());
                 }
 
-            } catch (UnknownHostException e) {
+            } catch (UnknownHostException | InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }).start();
     }
+
+    /*
 
     public void updateKbuckets(){
 
@@ -85,7 +160,6 @@ class RouteTable {
 
         previousRandomKey = randomKey;
 
-        //TODO: send request to find random ID
         try {
             log.info("Finding random node");
             int index = BitSet.valueOf(distance(randomKey, id)).nextSetBit(0) - 1;
@@ -144,27 +218,24 @@ class RouteTable {
         log.info("Scheduling next update in " + t + " seconds");
         executorService.schedule(this::updateKbuckets, t, TimeUnit.SECONDS);
     }
-
-    private static String IPtoString(byte[] ip) {
-        return String.format("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-    }
-
+     */
     public void add(List<Node> nodes) {
         nodes.stream().map(KNode::fromNode).forEach(this::add);
     }
 
     public void add(KNode kNode) {
-        int index = BitSet.valueOf(distance(kNode.getId(), id)).nextSetBit(0) - 1;
-        if (index > -1) {
+        int index = (id.length * 8 - 1) - BitSet.valueOf(distance(kNode.getId(), id)).nextSetBit(0) - 1;
+        if (index != id.length * 8 - 1) {
             add(kNode, index);
         }
     }
 
      private void add(KNode kNode, int index) {
         if (kBuckets[index].stream().map(Pair::getLeft).anyMatch(k -> Arrays.equals(k.getId(), kNode.getId()))){
+            log.info("updating node" + kNode);
             update(kBuckets[index], kNode);
         }else{
-            log.info(String.format("Adding node %s to the route table", Arrays.toString(kNode.getIp())));
+            log.info(String.format("added node %s to the route table to Kbucket %s", Arrays.toString(kNode.getIp()), index));
             ScheduledFuture<?> future = executorService.schedule(() -> refresh(kNode, index), 1, TimeUnit.HOURS);
             if (!kBuckets[index].offer(Pair.of(kNode, future))){
                 future.cancel(false);
@@ -174,9 +245,8 @@ class RouteTable {
 
     public void propagate(kBlock request) {
         log.info(String.format("Storing block with hash %s", Arrays.toString(request.getHash().toByteArray())));
-        KNode sender = KNode.fromNode(request.getSender());
 
-        int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(sender.getId(), id)).nextSetBit(0);
+        int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(request.getSender().toByteArray(), id)).nextSetBit(0);
 
         if (!blockStorageFunction.apply(request)) {
             log.info(String.format("Block with hash %s is invalid", Arrays.toString(request.getHash().toByteArray())));
@@ -221,29 +291,10 @@ class RouteTable {
         });
     }
 
-    public Iterable<Node> findNode(ByteString id) {
-        int index = BitSet.valueOf(distance(id.toByteArray(), this.id)).nextSetBit(0) - 1;
-
-        if (index > -1) {
-            return kBuckets[index].stream().map(Pair::getLeft).map(KNode::toNode).collect(Collectors.toCollection(ArrayList::new));
-        }
-
-        if (index == -1)
-            return Collections.singleton(
-                    Node.newBuilder()
-                            .setId(ByteString.copyFrom(this.id))
-                            .setIp(ByteString.copyFrom(myIp.getAddress()))
-                            .setPort(myPort)
-                            .build());
-
-        return Collections.emptyList();
-    }
-
     public void propagate(kTransaction data) {
         log.info(String.format("Storing transaction with signature %s", data));
-        KNode sender = KNode.fromNode(data.getSender());
 
-        int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(sender.getId(), id)).nextSetBit(0);
+        int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(data.getSender().toByteArray(), id)).nextSetBit(0);
 
         if (!transactionStorageFunction.apply(data)) {
             log.info(String.format("Transaction with signature %s is invalid", data));
@@ -265,15 +316,10 @@ class RouteTable {
                     ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).build();
                     ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
 
-                    Node thisNode = Node.newBuilder()
-                            .setId(ByteString.copyFrom(id))
-                            .setIp(ByteString.copyFrom(myIp.getAddress()))
-                            .setPort(myPort).build();
-
                     if (data.hasAuction())
-                        stub.storeTransaction(kTransaction.newBuilder().setAuction(data.getAuction()).setSender(thisNode).build());
+                        stub.storeTransaction(kTransaction.newBuilder().setAuction(data.getAuction()).setSender(ByteString.copyFrom(id)).build());
                     else
-                        stub.storeTransaction(kTransaction.newBuilder().setBid(data.getBid()).setSender(thisNode).build());
+                        stub.storeTransaction(kTransaction.newBuilder().setBid(data.getBid()).setSender(ByteString.copyFrom(id)).build());
 
                     update(kBuckets[i], node);
                     break;
@@ -286,33 +332,34 @@ class RouteTable {
         });
     }
 
-    private void refresh(KNode node, int index) {
-        try {
-            log.info(String.format("Refreshing node %s %s", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
-            ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
-            ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
+    public Iterable<Node> findNode(byte[] id) {
+        int index = kBuckets.length - BitSet.valueOf(distance(id, this.id)).nextSetBit(0) - 1;
 
-            try {
-                stub.ping(
-                        Node.newBuilder()
-                                .setId(ByteString.copyFrom(id))
-                                .setPort(myPort)
-                                .setIp(ByteString.copyFrom(myIp.getAddress()))
-                                .build()
-                );
-                log.info(String.format("Node %s %s responded to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
-            } catch (StatusRuntimeException e) {
-                log.info(String.format("Node %s %s did not respond to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
-                // doesn't need to cancel the future
-                kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())); //TODO: maybe try to update the kBucket
-                return;
-            }
+        if (index == kBuckets.length)
+            index = 0;
 
-            update(kBuckets[index], node);
+        List<KNode> nodes = new ArrayList<>(K);
 
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
+        if (!kBuckets[index].isEmpty())
+            nodes.addAll(kBuckets[index].stream().map(Pair::getLeft).limit(K).collect(Collectors.toList()));
+
+        int range = 1;
+        while (nodes.size() < K && (index - range >= 0 || (index + range < kBuckets.length))) {
+            //log.info(String.format("low %d high %d",index - range,index + range));
+            if (index - range >= 0)
+                nodes.addAll(kBuckets[index - range].stream().map(Pair::getLeft).limit(K - nodes.size()).collect(Collectors.toList()));
+
+            if ((index + range < kBuckets.length) && nodes.size() < K)
+                nodes.addAll(kBuckets[index + range].stream().map(Pair::getLeft).limit(K - nodes.size()).collect(Collectors.toList()));
+
+            range++;
         }
+
+        if (nodes.size() < K) nodes.add(new KNode(this.id, myIp.getAddress(), myPort));
+
+        log.info(String.format("findNode %s response :\n%s  ", KeysManager.hexString(id), nodes));
+
+        return nodes.stream().map(KNode::toNode).collect(Collectors.toList());
     }
 
 
@@ -412,4 +459,42 @@ class RouteTable {
         executorService.shutdown();
     }
 
+    private void refresh(KNode node, int index) {
+        try {
+            log.info(String.format("Refreshing node %s %s", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
+            ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
+            ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
+
+            try {
+                stub.ping(Sender.newBuilder().setKey(ByteString.copyFrom(id)).build());
+                log.info(String.format("Node %s %s responded to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
+            } catch (StatusRuntimeException e) {
+                log.info(String.format("Node %s %s did not respond to ping", Arrays.toString(node.getIp()), Arrays.toString(node.getId())));
+                // doesn't need to cancel the future
+                kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())); //TODO: maybe try to update the kBucket
+                return;
+            }
+
+            update(kBuckets[index], node);
+
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void getBlockStorageFunction(Function<String, Optional<Block>> blockStorageFunction) {
+        this.getBlockStorageFunction = blockStorageFunction;
+    }
+
+    public void getTransactionStorageFunction(Function<String, Optional<Transaction>> transactionStorageFunction) {
+        this.getTransactionStorageFunction = transactionStorageFunction;
+    }
+
+    public InetAddress getIP() {
+        return myIp;
+    }
+
+    public int getPort() {
+        return myPort;
+    }
 }

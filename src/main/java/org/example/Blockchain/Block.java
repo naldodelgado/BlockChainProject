@@ -9,6 +9,7 @@ import org.example.CryptoUtils.KeysManager;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -149,6 +150,20 @@ public class Block implements Serializable {
         digest.doFinal(hash, 0);
 
         return hash;
+    }
+
+
+    private void StoreBlockOnDisk() {
+        String filePath = "Blocks/" + Arrays.toString(this.getHash()) + ".block";
+        try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
+            writer.println("" + this.nonce);
+            writer.println("" + this.timestamp);
+            for (Transaction t : this.transactions) {
+                writer.println(Arrays.toString(t.hash()));
+            }
+        } catch (IOException e) {
+            System.err.println("Error writing to file: " + e.getMessage());
+        }
     }
 
     public byte[] calculateHash() {

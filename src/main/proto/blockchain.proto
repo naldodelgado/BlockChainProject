@@ -5,72 +5,75 @@ option java_package = "kademlia_public_ledger";
 option java_outer_classname = "PL";
 
 service Services {
-    rpc Ping (Node) returns (Node) {}
-    rpc StoreBlock (kBlock) returns (Node) {}
-    rpc StoreTransaction (kTransaction) returns (Node) {}
-    rpc FindNode (Node) returns (KBucket) {}
-    rpc FindKey (Key) returns (FindKeyReturn) {}
-    rpc FindBlock (Key) returns (kBlock) {}
-    rpc FindTransaction (Key) returns (kTransaction) {}
+  // with the key of the sender node
+  rpc Ping (Sender) returns (Node) {}
+  rpc StoreBlock (kBlock) returns (Node) {}
+  rpc StoreTransaction (kTransaction) returns (Node) {}
+  rpc FindNode (KeyWithSender) returns (KBucket) {}
+  rpc FindBlock (KeyWithSender) returns (kBlock) {}
+  rpc FindTransaction (KeyWithSender) returns (kTransaction) {}
+}
+
+message KeyWithSender {
+  bytes sender = 1;
+  bytes key = 2;
+}
+
+message BlockOrKBucket {
+  oneof BlockOrKBucket{
+    KBucket bucket = 1;
+    kBlock block = 2;
+  }
 }
 
 message kTransaction {
-    Node sender = 1;
-    oneof transaction {
-        Bid bid = 2;
-        Auction auction = 3;
-    }
-}
-
-message FindKeyReturn {
-    Node sender = 1;
-    bytes key = 2;
-    KBucket kBucket = 3;
-    bool found = 4;
+  bytes sender = 1;
+  oneof transaction {
+    Bid bid = 2;
+    Auction auction = 3;
+  }
 }
 
 message Auction {
   bytes itemID = 1;
-    bytes key = 2;
-    int64 timeout = 3;
-    bytes signature = 4;
-    bytes hash = 5;
-    int32 highest = 6;
-    int32 startBid = 7;
+  bytes key = 2;
+  int64 timeout = 3;
+  bytes signature = 4;
+  bytes hash = 5;
+  int32 highest = 6;
+  int32 startBid = 7;
   int32 minBid = 8;
 }
 
 message KBucket {
-    Node sender = 1;
-    repeated Node nodes = 2;
-    string com_key = 3; //TODO: is this necessary?
+  bytes sender = 1;
+  repeated Node nodes = 2;
 }
 
 message kBlock {
-    Node Sender = 1;
-    bytes hash = 2;
-    bytes prev_hash = 3;
-    repeated kTransaction transactions = 4;
-    int32 Nonce = 5;
-    int64 timestamp = 6;
+  bytes sender = 1;
+  bytes hash = 2;
+  bytes prev_hash = 3;
+  repeated kTransaction transactions = 4;
+  int32 nonce = 5;
+  int64 timestamp = 6;
 }
 
 message Bid {
   bytes sender = 1;
   bytes receiver = 2;
   bytes itemID = 3;
-    int32 amount = 4;
-    bytes signature = 5;
-    int64 timestamp = 6;
+  int32 amount = 4;
+  bytes signature = 5;
+  int64 timestamp = 6;
 }
 
 message Node {
-    bytes id = 1;
-    bytes ip = 2;
-    int32 port = 3;
+  bytes id = 1;
+  bytes ip = 2;
+  int32 port = 3;
 }
 
-message Key {
-    Node sender = 1;
-    bytes key = 2;
+message Sender {
+  bytes key = 1;
 }
