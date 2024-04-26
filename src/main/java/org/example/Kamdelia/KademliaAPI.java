@@ -18,9 +18,9 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
 
     @Override
     public void ping(Sender request, StreamObserver<Node> responseObserver) {
-        routeTable.add(new KNode(request.getKey().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), Constant.PORT_HEADER_KEY.get()));
+        routeTable.add(new KNode(request.getKey().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
 
-        log.info("Ping request from " + KeysManager.hexString(request.getKey().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + Constant.PORT_HEADER_KEY.get());
+        log.info("Ping request from " + KeysManager.hexString(request.getKey().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + request.getPort());
 
         Node response = Node.newBuilder()
                 .setId(ByteString.copyFrom(routeTable.getId()))
@@ -33,8 +33,8 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
 
     @Override
     public void storeBlock(kBlock request, StreamObserver<Node> responseObserver) {
-        log.info("StoreBlock request from " + KeysManager.hexString(request.getSender().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + Constant.PORT_HEADER_KEY.get());
-        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), Constant.PORT_HEADER_KEY.get()));
+        log.info("StoreBlock request from " + KeysManager.hexString(request.getSender().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + request.getPort());
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
 
         Node response = Node.newBuilder()
                 .setId(ByteString.copyFrom(routeTable.getId()))
@@ -47,9 +47,9 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
 
     @Override
     public void findNode(KeyWithSender request, StreamObserver<KBucket> responseObserver) {
-        log.info("FindNode request from " + KeysManager.hexString(request.getKey().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + Constant.PORT_HEADER_KEY.get());
+        log.info("FindNode request from " + KeysManager.hexString(request.getKey().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + request.getPort());
 
-        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), Constant.PORT_HEADER_KEY.get()));
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
 
         KBucket response = KBucket.newBuilder()
                 .addAllNodes(routeTable.findNode(request.getKey().toByteArray()))
@@ -62,9 +62,9 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
 
     @Override
     public void storeTransaction(kTransaction request, StreamObserver<Node> responseObserver){
-        log.info("StoreTransaction request from " + KeysManager.hexString(request.getSender().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + Constant.PORT_HEADER_KEY.get());
+        log.info("StoreTransaction request from " + KeysManager.hexString(request.getSender().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + request.getPort());
 
-        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), Constant.PORT_HEADER_KEY.get()));
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
         Node response = Node.newBuilder()
                 .setId(ByteString.copyFrom(routeTable.getId()))
                 .build();
@@ -77,13 +77,13 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
 
     @Override
     public void findBlock(KeyWithSender request, StreamObserver<kBlock> responseObserver) {
-        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), Constant.PORT_HEADER_KEY.get()));
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
 
     }
 
     @Override
     public void findTransaction(KeyWithSender request, StreamObserver<kTransaction> responseObserver) {
-        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), Constant.PORT_HEADER_KEY.get()));
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
 
     }
 

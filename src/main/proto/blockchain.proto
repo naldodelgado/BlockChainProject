@@ -16,7 +16,8 @@ service Services {
 
 message KeyWithSender {
   bytes sender = 1;
-  bytes key = 2;
+  int32 port = 2;
+  bytes key = 3;
 }
 
 message BlockOrKBucket {
@@ -28,9 +29,10 @@ message BlockOrKBucket {
 
 message kTransaction {
   bytes sender = 1;
+  int32 port = 2;
   oneof transaction {
-    Bid bid = 2;
-    Auction auction = 3;
+    Bid bid = 3;
+    Auction auction = 4;
   }
 }
 
@@ -47,16 +49,18 @@ message Auction {
 
 message KBucket {
   bytes sender = 1;
-  repeated Node nodes = 2;
+  int32 port = 2;
+  repeated Node nodes = 3;
 }
 
 message kBlock {
   bytes sender = 1;
-  bytes hash = 2;
-  bytes prev_hash = 3;
-  repeated kTransaction transactions = 4;
-  int32 nonce = 5;
-  int64 timestamp = 6;
+  int32 port = 2;
+  bytes hash = 3;
+  bytes prev_hash = 4;
+  repeated kTransaction transactions = 5;
+  int32 nonce = 6;
+  int64 timestamp = 7;
 }
 
 message Bid {
@@ -76,4 +80,5 @@ message Node {
 
 message Sender {
   bytes key = 1;
+  int32 port = 2;
 }
