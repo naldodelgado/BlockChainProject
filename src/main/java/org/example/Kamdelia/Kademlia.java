@@ -4,8 +4,6 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import kademlia_public_ledger.kBlock;
-import org.bouncycastle.crypto.Digest;
-import org.bouncycastle.crypto.digests.SHA1Digest;
 import org.example.Blockchain.Block;
 import org.example.Client.Transaction;
 import org.example.CryptoUtils.KeysManager;
@@ -33,7 +31,7 @@ public class Kademlia {
         }
         // SHA1 id
         // 160 bit id   (20 bytes)
-        byte[] id = createSHA1Hash(Arrays.toString(Inet4Address.getLocalHost().getAddress()) + System.currentTimeMillis() + Math.random());
+        byte[] id = KeysManager.createSHA1Hash(Arrays.toString(Inet4Address.getLocalHost().getAddress()) + System.currentTimeMillis() + Math.random());
         assert id.length == 20;
 
         routeTable = new RouteTable(id,logger);
@@ -41,19 +39,6 @@ public class Kademlia {
                 .forPort(port)
                 .addService(ServerInterceptors.intercept(new KademliaAPI(routeTable, logger), new Interceptor()))
                 .build();
-    }
-
-    static byte[] createSHA1Hash(String s) {
-        Digest digest = new SHA1Digest();
-        byte[] data = s.getBytes();
-        byte[] hash = new byte[digest.getDigestSize()];
-
-        assert hash.length == 20;
-
-        digest.update(data, 0, data.length);
-        digest.doFinal(hash, 0);
-
-        return hash;
     }
 
     public void start() {

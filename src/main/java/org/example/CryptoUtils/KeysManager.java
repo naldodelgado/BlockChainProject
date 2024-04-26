@@ -1,6 +1,7 @@
 package org.example.CryptoUtils;
 
 import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA1Digest;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -30,6 +31,19 @@ public class KeysManager {
             throw new RuntimeException(e);
         }
 
+    }
+
+    public static byte[] createSHA1Hash(String s) {
+        Digest digest = new SHA1Digest();
+        byte[] data = s.getBytes();
+        byte[] hash = new byte[digest.getDigestSize()];
+
+        assert hash.length == 20;
+
+        digest.update(data, 0, data.length);
+        digest.doFinal(hash, 0);
+
+        return hash;
     }
 
     public static byte[] hash(Object[] data){
