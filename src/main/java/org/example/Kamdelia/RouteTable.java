@@ -69,7 +69,7 @@ class RouteTable {
         //executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent() * 1000, TimeUnit.SECONDS);
 
 
-        /*
+
         executorService.schedule(() ->{
             int i = 0;
             for (var kBucket : kBuckets){
@@ -79,7 +79,6 @@ class RouteTable {
                 i++;
             }
         },40,TimeUnit.SECONDS);
-         */
 
 
         try {
@@ -103,6 +102,7 @@ class RouteTable {
                                 .newBuilder()
                                 .setKey(ByteString.copyFrom(id))
                                 .setSender(ByteString.copyFrom(id))
+                                .setPort(myPort)
                                 .build()
                 );
                 log.info(String.format("Found %d nodes in the network", response.getNodesCount()));
@@ -134,6 +134,7 @@ class RouteTable {
                                     .newBuilder()
                                     .setKey(ByteString.copyFrom(id))
                                     .setSender(ByteString.copyFrom(id))
+                                    .setPort(myPort)
                                     .build()
                     );
 
@@ -270,6 +271,7 @@ class RouteTable {
                     kBlock block = kBlock.newBuilder()
                             .setHash(request.getHash())
                             .setSender(request.getSender())
+                            .setPort(myPort)
                             .setPrevHash(request.getPrevHash())
                             .setNonce(request.getNonce())
                             .setTimestamp(request.getTimestamp())
@@ -296,7 +298,7 @@ class RouteTable {
 
         int senderDistance = (id.length * 8 - 2) - BitSet.valueOf(distance(data.getSender().toByteArray(), id)).nextSetBit(0);
 
-        if (!transactionStorageFunction.apply(data)) {
+        if (!Transaction.fromGrpc(data).verify()) {
             log.info(String.format("Transaction with signature %s is invalid", data));
             return;
         }
@@ -316,20 +318,55 @@ class RouteTable {
                     ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).build();
                     ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
 
-                    if (data.hasAuction())
-                        stub.storeTransaction(kTransaction.newBuilder().setAuction(data.getAuction()).setSender(ByteString.copyFrom(id)).build());
-                    else
-                        stub.storeTransaction(kTransaction.newBuilder().setBid(data.getBid()).setSender(ByteString.copyFrom(id)).build());
+                    stub.storeTransaction(data.newBuilderForType().setSender(ByteString.copyFrom(id)).setPort(myPort).build());
 
                     update(kBuckets[i], node);
+
+                    Thread.sleep(1000);
+
+                    log.info("Checking that the block was effectively");
+
+                    if (!checkPropagate(i, node.getId(), data)) {
+                        kBuckets[i].removeIf((t) -> Arrays.equals(t.getLeft().getId(), node.getId()));
+                        continue;
+                    }
+
                     break;
                 } catch (StatusRuntimeException e) {
                     log.info(String.format("Node %s %s did not respond to store error %s",
                             Arrays.toString(node.getIp()), Arrays.toString(node.getId()), e.getStatus().getCode()));
                     kBuckets[i].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId()));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             }
         });
+    }
+
+    public boolean checkPropagate(int i, byte[] nodeID, kTransaction transaction) {
+        var checkNode = kBuckets[i].stream().filter((t) -> !Arrays.equals(t.getLeft().getId(), nodeID)).findFirst();
+
+        if (checkNode.isEmpty())
+            return true;
+
+        ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(checkNode.get().getKey().getIp()), checkNode.get().getKey().getPort()).build();
+        ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
+
+        kTransaction checkTransaction;
+        if (transaction.hasAuction())
+            checkTransaction = stub.findTransaction(KeyWithSender.newBuilder().setSender(ByteString.copyFrom(id)).setKey(transaction.getBid().getHash()).build());
+        else
+            checkTransaction = stub.findTransaction(KeyWithSender.newBuilder().setSender(ByteString.copyFrom(id)).setKey(transaction.getBid().getHash()).build());
+
+
+        //TODO: check if the node has propagated the block to a random node in the range
+
+        return false;
+
+    }
+
+    public void propagate(Transaction data) {
+        propagate(data.toGrpc(id));
     }
 
     public Iterable<Node> findNode(byte[] id) {
@@ -430,8 +467,12 @@ class RouteTable {
     private void update(Queue<Pair<KNode,ScheduledFuture<?>>> kBucket, KNode node){
         synchronized (kBucket) {
             kBucket.stream().filter(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())).forEach(pair -> pair.getRight().cancel(false));
-            if(kBucket.removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())))
-                kBucket.add(Pair.of(node, executorService.schedule(() -> refresh(node, 0), 1, TimeUnit.HOURS)));
+            if (kBucket.removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId()))) {
+                var event = executorService.schedule(() -> refresh(node, 0), 1, TimeUnit.HOURS);
+                if (kBucket.offer(Pair.of(node, event)))
+                    event.cancel(false);
+            }
+
         }
     }
 

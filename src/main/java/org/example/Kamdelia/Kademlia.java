@@ -67,7 +67,7 @@ public class Kademlia {
     public void propagate(Transaction data) {
         executor.submit(() -> {
             logger.info("Propagating transaction: " + data);
-            routeTable.propagate(data.toGrpc());
+            routeTable.propagate(data);
         });
     }
 

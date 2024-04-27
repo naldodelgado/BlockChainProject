@@ -1,5 +1,7 @@
 package org.example.Client;
 
+import com.google.protobuf.ByteString;
+import kademlia_public_ledger.kTransaction;
 import org.example.CryptoUtils.KeysManager;
 
 import java.io.File;
@@ -47,32 +49,25 @@ public class Bid extends Transaction implements Serializable {
         return new Bid(actionID, senderAddress, recipientAddress, amount, signature);
     }
 
-    public byte[] getTransactionId() {
-        return transactionId;
-    }
-
-    public byte[] getActionHash() {
-        return actionHash;
-    }
-
-    public byte[] getRecipientAddress() {
-        return recipientAddress;
-    }
-
-    public int getAmount() {
-        return amount;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public kademlia_public_ledger.kTransaction toGrpc() {
+    public kademlia_public_ledger.kTransaction toGrpc(byte[] senderID) {
         return kademlia_public_ledger.kTransaction.newBuilder()
                 .setBid(
                         kademlia_public_ledger.Bid.newBuilder()
-                                .setSender(com.google.protobuf.ByteString.copyFrom(actionHash))
-                                .setReceiver(com.google.protobuf.ByteString.copyFrom(recipientAddress))
+                                .setSender(ByteString.copyFrom(actionHash))
+                                .setReceiver(ByteString.copyFrom(recipientAddress))
+                                .setAmount(amount)
+                                .build()
+                ).setSender(ByteString.copyFrom(senderID))
+                .build();
+    }
+
+    @Override
+    public kTransaction toGrpc() {
+        return kademlia_public_ledger.kTransaction.newBuilder()
+                .setBid(
+                        kademlia_public_ledger.Bid.newBuilder()
+                                .setSender(ByteString.copyFrom(actionHash))
+                                .setReceiver(ByteString.copyFrom(recipientAddress))
                                 .setAmount(amount)
                                 .build()
                 ).build();
@@ -81,6 +76,9 @@ public class Bid extends Transaction implements Serializable {
     @Override
     public boolean verify() {
         byte[] data = KeysManager.hash(new Object[]{actionHash, recipientAddress, amount, timestamp});
+        //TODO: verify that the timestamp is bigger than the timestamp of its auction
+        // verify that its auction exists
+        // verify that the amount is bigger that the last bid plus the min bid amount
         return KeysManager.verifySignature(signature, data, KeysManager.getPublicKeyFromBytes(actionHash));
     }
 
@@ -109,5 +107,27 @@ public class Bid extends Transaction implements Serializable {
                 "timestamp=" + timestamp + "\n" +
                 '}';
     }
+
+    public byte[] getTransactionId() {
+        return transactionId;
+    }
+
+    public byte[] getActionHash() {
+        return actionHash;
+    }
+
+    public byte[] getRecipientAddress() {
+        return recipientAddress;
+    }
+
+    public int getAmount() {
+        return amount;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+
 
 }

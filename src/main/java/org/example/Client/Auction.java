@@ -1,5 +1,6 @@
 package org.example.Client;
 
+import com.google.protobuf.ByteString;
 import kademlia_public_ledger.kTransaction;
 import org.example.CryptoUtils.KeysManager;
 
@@ -56,6 +57,23 @@ public class Auction extends Transaction {
     }
 
     @Override
+    public kTransaction toGrpc(byte[] id) {
+        return kTransaction.newBuilder()
+                .setAuction(
+                        kademlia_public_ledger.Auction.newBuilder()
+                                .setItemID(ByteString.copyFrom(this.idItem))
+                                .setStartBid(this.minAmount)
+                                .setMinBid(this.minIncrement)
+                                .setTimeout(this.timeout)
+                                .setKey(ByteString.copyFrom(this.sellerPublicKey.getEncoded()))
+                                .setHash(ByteString.copyFrom(this.hash))
+                                .setSignature(ByteString.copyFrom(this.signature))
+                                .build()
+                ).setSender(ByteString.copyFrom(id))
+                .build();
+    }
+
+    @Override
     public kTransaction toGrpc() {
         return kTransaction.newBuilder()
                 .setAuction(
@@ -64,9 +82,9 @@ public class Auction extends Transaction {
                                 .setStartBid(this.minAmount)
                                 .setMinBid(this.minIncrement)
                                 .setTimeout(this.timeout)
-                                .setKey(com.google.protobuf.ByteString.copyFrom(this.sellerPublicKey.getEncoded()))
-                                .setHash(com.google.protobuf.ByteString.copyFrom(this.hash))
-                                .setSignature(com.google.protobuf.ByteString.copyFrom(this.signature))
+                                .setKey(ByteString.copyFrom(this.sellerPublicKey.getEncoded()))
+                                .setHash(ByteString.copyFrom(this.hash))
+                                .setSignature(ByteString.copyFrom(this.signature))
                                 .build()
                 ).build();
     }
@@ -85,7 +103,6 @@ public class Auction extends Transaction {
         File file = new File("blockchain/auctions/" + KeysManager.hexString(this.hash) + ":" + KeysManager.hexString(this.sellerPublicKey.getEncoded()) + ".auction");
 
         try {
-
             //TODO: better way to store the auction
             FileOutputStream fileOutputStream = new FileOutputStream(file);
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);

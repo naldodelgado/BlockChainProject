@@ -70,6 +70,7 @@ message Bid {
   int32 amount = 4;
   bytes signature = 5;
   int64 timestamp = 6;
+  bytes hash = 7;
 }
 
 message Node {

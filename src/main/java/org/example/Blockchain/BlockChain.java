@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 
 public class BlockChain {
     private final List<Block> blocks; // limit 10 block at a time
@@ -29,9 +28,9 @@ public class BlockChain {
             try (BufferedReader transactionReader = new BufferedReader(new FileReader(t))) {
                 String transactionType = transactionReader.readLine().trim();
                 if (transactionType.equals("Bid")) {
-                    return Optional.of(Bid.fromStorage(t));
+                    return Bid.fromStorage(t);
                 } else {
-                    return Optional.of(Auction.fromStorage(t));
+                    return Auction.fromStorage(t);
                 }
             } catch (IOException e) {
                 System.err.println("Error reading from file: " + e.getMessage());
@@ -39,6 +38,7 @@ public class BlockChain {
             }
         });
         kademlia.setBlockStorageGetter((hash) -> {
+            //TODO move this to its own function
             String filePath = "Blocks/" + hash + ".block";
             try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
                 int nonce = Integer.parseInt(reader.readLine().trim());
@@ -50,7 +50,7 @@ public class BlockChain {
                 while ((line = reader.readLine()) != null) {
                     String transactionFilePath = "Transactions/" + line.trim() + ".transaction";
                     // call setTransactionStorageGetter to get the transaction from the transaction storage
-                    kademlia.setTransactionStorageGetter();
+                    //kademlia.setTransactionStorageGetter();
                 }
 
                 reader.close(); // Close file reader to avoid resource leak

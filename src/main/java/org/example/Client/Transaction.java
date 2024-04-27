@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Optional;
 
 public abstract class Transaction {
 
@@ -15,8 +16,8 @@ public abstract class Transaction {
         }
     }
 
-    public static Transaction fromStorage(String id) {
-        return null;
+    public static Optional<Transaction> fromStorage(String id) {
+        return Optional.empty();
     }
 
     private void storeTransactionOnDisk(){
@@ -44,6 +45,8 @@ public abstract class Transaction {
                 break;
         }
     }
+
+    public abstract kademlia_public_ledger.kTransaction toGrpc(byte[] senderID);
 
     public abstract kademlia_public_ledger.kTransaction toGrpc();
 

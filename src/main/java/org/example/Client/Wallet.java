@@ -34,9 +34,10 @@ public class Wallet {
         this.publicKey = keyPair.getPublic();
     }
 
-    public void startAuction(byte[] idItem, int minAmount, int minIncrement, long timeout) {
-        auctions.add(Pair.of(new Auction(idItem, minAmount, minIncrement, timeout, this), new ArrayList<>()));
-
+    public Auction startAuction(byte[] idItem, int minAmount, int minIncrement, long timeout) {
+        Auction temp = new Auction(idItem, minAmount, minIncrement, timeout, this);
+        auctions.add(Pair.of(temp, new ArrayList<>()));
+        return temp;
     }
 
     public void bid(Auction auction, PublicKey sellerKey, int amount) {
