@@ -1,5 +1,10 @@
 package org.example.Client;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Arrays;
+
 public abstract class Transaction {
 
     public static Transaction fromGrpc(kademlia_public_ledger.kTransaction transaction) {
@@ -12,6 +17,32 @@ public abstract class Transaction {
 
     public static Transaction fromStorage(String id) {
         return null;
+    }
+
+    private void storeTransactionOnDisk(){
+        switch (this.getClass().getSimpleName()){
+            case "Bid":
+                String filePath = "Transactions/Bids/" + Arrays.toString(this.hash()) + ".bid";
+                try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
+                    writer.println("Bid");
+                    writer.println(Arrays.toString(this.hash()));
+                    writer.println(((Bid)this).getAmount());
+                    //TODO: write bid details
+                } catch (IOException e) {
+                    System.err.println("Error writing to file: " + e.getMessage());
+                }
+                break;
+            case "Auction":
+                String filePath2 = "Transactions/Auctions/" + Arrays.toString(this.hash()) + ".auction";
+                try (PrintWriter writer = new PrintWriter(new FileWriter(filePath2))) {
+                    writer.println("Auction");
+                    writer.println(Arrays.toString(this.hash()));
+                    //TODO: write auction details
+                } catch (IOException e) {
+                    System.err.println("Error writing to file: " + e.getMessage());
+                }
+                break;
+        }
     }
 
     public abstract kademlia_public_ledger.kTransaction toGrpc();
