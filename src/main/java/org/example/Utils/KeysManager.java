@@ -13,8 +13,11 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.logging.Logger;
 
 public class KeysManager {
+
+    private static final Logger logger = Logger.getLogger(KeysManager.class.getName());
 
     static {
         Security.addProvider(new BouncyCastleProvider());
@@ -47,15 +50,14 @@ public class KeysManager {
     }
 
     public static byte[] hash(Object[] data){
-        try {
+        try (
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)
+        ) {
             // Serialize each object and write it to the stream so than the digest function is able to use multiple objects as input
             for (Object obj : data) {
                 objectOutputStream.writeObject(obj);
             }
-            objectOutputStream.close();
 
             byte[] stream = byteArrayOutputStream.toByteArray();
 
@@ -63,8 +65,11 @@ public class KeysManager {
             Digest digest = new SHA256Digest();
             byte[] hash = new byte[digest.getDigestSize()];
 
-            digest.update(stream, 0, data.length);
+            digest.update(stream, 0, stream.length);
             digest.doFinal(hash, 0);
+
+            objectOutputStream.close();
+            byteArrayOutputStream.close();
 
             return hash;
         } catch (IOException e) {

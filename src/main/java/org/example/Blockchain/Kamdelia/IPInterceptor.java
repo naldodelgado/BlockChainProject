@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package org.example.Kamdelia;
+package org.example.Blockchain.Kamdelia;
 
 import io.grpc.*;
 
 import java.net.SocketAddress;
 
 
-public class IPInterceptor implements ServerInterceptor {
+class IPInterceptor implements ServerInterceptor {
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(

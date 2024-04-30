@@ -1,4 +1,4 @@
-package org.example.Kamdelia;
+package org.example.Blockchain.Kamdelia;
 
 import com.google.protobuf.ByteString;
 import kademlia_public_ledger.Node;

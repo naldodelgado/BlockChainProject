@@ -1,14 +1,11 @@
 package org.example;
 
 import org.example.Blockchain.BlockChain;
-import org.example.Client.Auction;
 import org.example.Client.Wallet;
-import org.example.Kamdelia.Kademlia;
 import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
 import org.example.poisson.PoissonProcess;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -24,53 +21,38 @@ public class Main {
     static PoissonProcess bidder = new PoissonProcess(16, new Random((int) (Math.random() * 1000)));
     static ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     static Logger logger = Logger.getLogger(Main.class.getName());
-    static Kademlia kademlia;
+    static BlockChain blockChain = new BlockChain();
 
     public static void main(String[] args) {
         logger.setFilter(new LogFilter());
-        try {
-            kademlia = new Kademlia(5000);
 
-            BlockChain blockChain = new BlockChain(kademlia);
+        Wallet.setBlockchain(blockChain);
 
-            // Can only be called after the blockChain is initialized
-            kademlia.start();
-
-            for (int i = 0; i < 10; i++) {
-                wallets.add(new Wallet(blockChain));
-            }
-
-            int time = (int) (auctionTimer.timeForNextEvent() * 1000);
-            logger.info(String.format("scheduled auction in %d seconds", time));
-            executor.schedule(Main::actionStarter, time, TimeUnit.SECONDS);
-            //executor.schedule(Main::bidder, (long) bidder.timeForNextEvent() * 1000, TimeUnit.SECONDS);
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        for (int i = 0; i < 10; i++) {
+            wallets.add(new Wallet());
         }
+
+        int time = (int) (10 + Math.random() * 30);
+        logger.info(String.format("scheduled auction in %d seconds", time));
+        executor.schedule(Main::actionStarter, time, TimeUnit.SECONDS);
+
     }
 
     public static void actionStarter() {
         logger.info("generating auction");
-        Auction auction = wallets.get((int) (Math.random() * 10))
-                .startAuction(
-                        KeysManager.hash(new Object[]{wallets, Math.random()}),
-                        100,
-                        10,
-                        System.currentTimeMillis() + 1_000_000
-                );
 
-        logger.info("propagating the auction");
+        var wallet = wallets.get((int) (Math.random() * 10));
 
-        kademlia.propagate(auction);
+        blockChain.addTransaction(wallet.startAuction(
+                KeysManager.hash(new Object[]{wallet, Math.random()}),
+                100,
+                10,
+                System.currentTimeMillis() + 1_000_000
+        ));
 
         long time = (long) (auctionTimer.timeForNextEvent() * 1000);
         logger.info(String.format("scheduled auction in %d seconds", time));
         executor.schedule(Main::actionStarter, time, TimeUnit.SECONDS);
     }
 
-//    public static void bidder(){
-//        wallets.get((int) Math.random())
-//                .bid();
-//    }
 }

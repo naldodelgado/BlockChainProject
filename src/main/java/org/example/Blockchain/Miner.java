@@ -1,6 +1,6 @@
 package org.example.Blockchain;
 
-public class Miner implements Runnable{
+class Miner implements Runnable {
 
     private final Block block;
     private boolean isMining = true;

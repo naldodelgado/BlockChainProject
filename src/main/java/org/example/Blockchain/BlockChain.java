@@ -1,10 +1,10 @@
 package org.example.Blockchain;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.example.Blockchain.Kamdelia.Kademlia;
 import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
-import org.example.Kamdelia.Kademlia;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -21,51 +21,11 @@ public class BlockChain {
     private final Kademlia kademlia;
     private List<Pair<Auction, Bid>> activeBids;
 
-    public BlockChain(Kademlia kademlia) {
-        kademlia.setBlockStorageFunction((t) -> store(Block.fromGrpc(t)));
-        kademlia.setTransactionStorageFunction((t) -> addTransaction(Transaction.fromGrpc(t)));
-        kademlia.setTransactionStorageGetter((t) -> {
-            try (BufferedReader transactionReader = new BufferedReader(new FileReader(t))) {
-                String transactionType = transactionReader.readLine().trim();
-                if (transactionType.equals("Bid")) {
-                    return Bid.fromStorage(t);
-                } else {
-                    return Auction.fromStorage(t);
-                }
-            } catch (IOException e) {
-                System.err.println("Error reading from file: " + e.getMessage());
-                return Optional.empty();
-            }
-        });
-        kademlia.setBlockStorageGetter((hash) -> {
-            //TODO move this to its own function
-            String filePath = "Blocks/" + hash + ".block";
-            try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-                int nonce = Integer.parseInt(reader.readLine().trim());
-                long timestamp = Long.parseLong(reader.readLine().trim());
-                ArrayList<Transaction> transactions = new ArrayList<>();
-
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    String transactionFilePath = "Transactions/" + line.trim() + ".transaction";
-                    // call setTransactionStorageGetter to get the transaction from the transaction storage
-                    //kademlia.setTransactionStorageGetter();
-                }
-
-                reader.close(); // Close file reader to avoid resource leak
-                // Create and return a new Block object
-                return Optional.of(new Block(nonce, timestamp, transactions));
-
-            } catch (IOException e) {
-                System.err.println("Error reading from file: " + e.getMessage());
-                return Optional.empty();
-            }
-        });
+    public BlockChain() {
+        kademlia = new Kademlia(5000, this);
 
         this.transactions = new ArrayList<>();
         this.blocks = new ArrayList<>();
-        this.kademlia = kademlia;
     }
 
     public void propagateBlock(Block block) {
@@ -205,5 +165,47 @@ public class BlockChain {
         return true;
     }
 
+    public boolean addBlock(Block block) {
+        return false;
+    }
+
+    public Optional<Block> getBlock(byte[] hash) {
+        String filePath = "Blocks/" + hash + ".block";
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            int nonce = Integer.parseInt(reader.readLine().trim());
+            long timestamp = Long.parseLong(reader.readLine().trim());
+            ArrayList<Transaction> transactions = new ArrayList<>();
+
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                String transactionFilePath = "Transactions/" + line.trim() + ".transaction";
+                // call setTransactionStorageGetter to get the transaction from the transaction storage
+                //kademlia.setTransactionStorageGetter();
+            }
+
+            reader.close(); // Close file reader to avoid resource leak
+            // Create and return a new Block object
+            return Optional.of(new Block(nonce, timestamp, transactions));
+
+        } catch (IOException e) {
+            System.err.println("Error reading from file: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    public Optional<Transaction> getTransaction(String hash) {
+        try (BufferedReader transactionReader = new BufferedReader(new FileReader(hash))) {
+            String transactionType = transactionReader.readLine().trim();
+            if (transactionType.equals("Bid")) {
+                return Bid.fromStorage(hash);
+            } else {
+                return Auction.fromStorage(hash);
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading from file: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
 
 }
