@@ -34,11 +34,11 @@ public class Main {
 
         int time = (int) (10 + Math.random() * 30);
         logger.info(String.format("scheduled auction in %d seconds", time));
-        executor.schedule(Main::actionStarter, time, TimeUnit.SECONDS);
+        executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
 
     }
 
-    public static void actionStarter() {
+    public static void auctionStarter() {
         logger.info("generating auction");
 
         var wallet = wallets.get((int) (Math.random() * 10));
@@ -52,7 +52,7 @@ public class Main {
 
         long time = (long) (auctionTimer.timeForNextEvent() * 1000);
         logger.info(String.format("scheduled auction in %d seconds", time));
-        executor.schedule(Main::actionStarter, time, TimeUnit.SECONDS);
+        executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
     }
 
 }

@@ -12,32 +12,32 @@ import java.util.Date;
 
 public class Bid extends Transaction implements Serializable {
     private final byte[] transactionId;
-    private final byte[] actionHash; // actionID
+    private final byte[] auctionHash; // actionID
     private final byte[] senderAddress; // public key
     private final byte[] recipientAddress; // public key
     private final byte[] signature;
     private final int amount;
     private final long timestamp;
 
-    public Bid(byte[] actionHash, byte[] senderAddress, byte[] recipientAddress, int amount, byte[] signature) {
-        this.actionHash = actionHash;
+    public Bid(byte[] auctionHash, byte[] senderAddress, byte[] recipientAddress, int amount, byte[] signature) {
+        this.auctionHash = auctionHash;
         this.senderAddress = senderAddress;
         this.recipientAddress = recipientAddress;
         this.amount = amount;
         this.timestamp = new Date().getTime();
-        this.transactionId = KeysManager.hash(new Object[]{actionHash, senderAddress, recipientAddress, amount, timestamp});
+        this.transactionId = KeysManager.hash(new Object[]{auctionHash, senderAddress, recipientAddress, amount, timestamp});
         assert transactionId.length == 20;
         this.signature = signature;
     }
 
-    public Bid(byte[] actionHash, PublicKey senderAddress, PublicKey recipientAddress, int amount, PrivateKey privateKey) {
-        this.actionHash = actionHash;
+    public Bid(byte[] auctionHash, PublicKey senderAddress, PublicKey recipientAddress, int amount, PrivateKey privateKey) {
+        this.auctionHash = auctionHash;
         this.senderAddress = senderAddress.getEncoded();
         this.recipientAddress = recipientAddress.getEncoded();
         this.amount = amount;
         this.timestamp = new Date().getTime();
-        this.transactionId = KeysManager.hash(new Object[]{actionHash, recipientAddress, amount, timestamp});
-        this.signature = KeysManager.sign(privateKey, new Object[]{actionHash, recipientAddress, amount, timestamp});
+        this.transactionId = KeysManager.hash(new Object[]{auctionHash, recipientAddress, amount, timestamp});
+        this.signature = KeysManager.sign(privateKey, new Object[]{auctionHash, recipientAddress, amount, timestamp});
     }
 
     public static Bid fromGrpc(kademlia_public_ledger.Bid bid) {
@@ -53,7 +53,7 @@ public class Bid extends Transaction implements Serializable {
         return kademlia_public_ledger.kTransaction.newBuilder()
                 .setBid(
                         kademlia_public_ledger.Bid.newBuilder()
-                                .setSender(ByteString.copyFrom(actionHash))
+                                .setSender(ByteString.copyFrom(auctionHash))
                                 .setReceiver(ByteString.copyFrom(recipientAddress))
                                 .setAmount(amount)
                                 .build()
@@ -66,7 +66,7 @@ public class Bid extends Transaction implements Serializable {
         return kademlia_public_ledger.kTransaction.newBuilder()
                 .setBid(
                         kademlia_public_ledger.Bid.newBuilder()
-                                .setSender(ByteString.copyFrom(actionHash))
+                                .setSender(ByteString.copyFrom(auctionHash))
                                 .setReceiver(ByteString.copyFrom(recipientAddress))
                                 .setAmount(amount)
                                 .build()
@@ -75,16 +75,16 @@ public class Bid extends Transaction implements Serializable {
 
     @Override
     public boolean verify() {
-        byte[] data = KeysManager.hash(new Object[]{actionHash, recipientAddress, amount, timestamp});
+        byte[] data = KeysManager.hash(new Object[]{auctionHash, recipientAddress, amount, timestamp});
         //TODO: verify that the timestamp is bigger than the timestamp of its auction
         // verify that its auction exists
         // verify that the amount is bigger that the last bid plus the min bid amount
-        return KeysManager.verifySignature(signature, data, KeysManager.getPublicKeyFromBytes(actionHash));
+        return KeysManager.verifySignature(signature, data, KeysManager.getPublicKeyFromBytes(auctionHash));
     }
 
     @Override
     public void store() {
-        File file = new File("blockchain/actions/" + KeysManager.hexString(actionHash) + ":" + KeysManager.hexString(senderAddress) + ".auction");
+        File file = new File("blockchain/actions/" + KeysManager.hexString(auctionHash) + ":" + KeysManager.hexString(senderAddress) + ".auction");
 
         //TODO: implement a way to append the bid to the auction file
 
@@ -92,14 +92,14 @@ public class Bid extends Transaction implements Serializable {
 
     @Override
     public byte[] hash() {
-        return KeysManager.hash(new Object[]{actionHash, recipientAddress, amount, timestamp});
+        return KeysManager.hash(new Object[]{auctionHash, recipientAddress, amount, timestamp});
     }
 
     @Override
     public String toString() {
         return "Bid{" +
                 "transactionId=" + KeysManager.hexString(transactionId) + "\n\t" +
-                "actionHash=" + KeysManager.hexString(actionHash) + "\n\t" +
+                "actionHash=" + KeysManager.hexString(auctionHash) + "\n\t" +
                 "senderAddress=" + KeysManager.hexString(senderAddress) + "\n\t" +
                 "recipientAddress=" + KeysManager.hexString(recipientAddress) + "\n\t" +
                 "signature=" + KeysManager.hexString(signature) + "\n\t" +
@@ -112,8 +112,8 @@ public class Bid extends Transaction implements Serializable {
         return transactionId;
     }
 
-    public byte[] getActionHash() {
-        return actionHash;
+    public byte[] getAuctionHash() {
+        return auctionHash;
     }
 
     public byte[] getRecipientAddress() {
