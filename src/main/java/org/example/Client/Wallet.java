@@ -2,7 +2,7 @@ package org.example.Client;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.example.Blockchain.BlockChain;
-import org.example.CryptoUtils.KeysManager;
+import org.example.Utils.KeysManager;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;

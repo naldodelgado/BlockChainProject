@@ -21,7 +21,7 @@ import io.grpc.*;
 import java.net.SocketAddress;
 
 
-public class Interceptor implements ServerInterceptor {
+public class IPInterceptor implements ServerInterceptor {
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(

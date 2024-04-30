@@ -6,7 +6,8 @@ import io.grpc.ServerInterceptors;
 import kademlia_public_ledger.kBlock;
 import org.example.Blockchain.Block;
 import org.example.Client.Transaction;
-import org.example.CryptoUtils.KeysManager;
+import org.example.Utils.KeysManager;
+import org.example.Utils.LogFilter;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -26,6 +27,7 @@ public class Kademlia {
     public final static int genesisPort = 5000;
 
     public Kademlia(int port) throws IOException {
+        logger.setFilter(new LogFilter());
         if (port < 0 || port > 65535) {
             throw new IllegalArgumentException("Port must be between 0 and 65535");
         }
@@ -34,22 +36,18 @@ public class Kademlia {
         byte[] id = KeysManager.createSHA1Hash(Arrays.toString(Inet4Address.getLocalHost().getAddress()) + System.currentTimeMillis() + Math.random());
         assert id.length == 20;
 
-        routeTable = new RouteTable(id,logger);
+        routeTable = new RouteTable(id);
         server = ServerBuilder
                 .forPort(port)
-                .addService(ServerInterceptors.intercept(new KademliaAPI(routeTable, logger), new Interceptor()))
+                .addService(ServerInterceptors.intercept(new KademliaAPI(routeTable), new IPInterceptor()))
                 .build();
     }
 
     public void start() {
         try {
             server.start();
-
             logger.info("Server started, listening on " + server.getPort());
-            System.out.println("Server started, listening on " + server.getPort());
-
             routeTable.start();
-
         } catch (IOException e) {
             logger.severe("Server failed to start: " + e.getMessage());
         }
@@ -83,12 +81,12 @@ public class Kademlia {
 
     public void setBlockStorageGetter(Function<String, Optional<Block>> blockStorageFunction) {
         // the function should return true if the block is valid and stored, false otherwise
-        routeTable.getBlockStorageFunction(blockStorageFunction);
+        routeTable.SetBlockStorageFunctionGetter(blockStorageFunction);
     }
 
     public void setTransactionStorageGetter(Function<String, Optional<Transaction>> transactionStorageFunction) {
         // the function should return true if the transaction is valid and stored, false otherwise
-        routeTable.getTransactionStorageFunction(transactionStorageFunction);
+        routeTable.SetTransactionStorageFunctionGetter(transactionStorageFunction);
     }
 
     public Block getBlock(byte[] hash, long index) {

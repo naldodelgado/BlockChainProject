@@ -1,4 +1,4 @@
-package org.example.CryptoUtils;
+package org.example.Utils;
 
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;

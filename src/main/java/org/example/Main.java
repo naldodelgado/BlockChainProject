@@ -3,15 +3,15 @@ package org.example;
 import org.example.Blockchain.BlockChain;
 import org.example.Client.Auction;
 import org.example.Client.Wallet;
-import org.example.CryptoUtils.KeysManager;
 import org.example.Kamdelia.Kademlia;
+import org.example.Utils.KeysManager;
+import org.example.Utils.LogFilter;
 import org.example.poisson.PoissonProcess;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +27,7 @@ public class Main {
     static Kademlia kademlia;
 
     public static void main(String[] args) {
+        logger.setFilter(new LogFilter());
         try {
             kademlia = new Kademlia(5000);
 
@@ -34,8 +35,6 @@ public class Main {
 
             // Can only be called after the blockChain is initialized
             kademlia.start();
-
-            Scanner scanner = new Scanner(System.in);
 
             for (int i = 0; i < 10; i++) {
                 wallets.add(new Wallet(blockChain));
@@ -60,6 +59,8 @@ public class Main {
                         10,
                         System.currentTimeMillis() + 1_000_000
                 );
+
+        logger.info("propagating the auction");
 
         kademlia.propagate(auction);
 

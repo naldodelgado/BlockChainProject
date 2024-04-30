@@ -2,7 +2,7 @@ package org.example.Client;
 
 import com.google.protobuf.ByteString;
 import kademlia_public_ledger.kTransaction;
-import org.example.CryptoUtils.KeysManager;
+import org.example.Utils.KeysManager;
 
 import java.io.File;
 import java.io.Serializable;

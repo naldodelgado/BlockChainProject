@@ -2,7 +2,8 @@ package org.example.Kamdelia;
 
 import com.google.protobuf.ByteString;
 import kademlia_public_ledger.Node;
-import org.example.CryptoUtils.KeysManager;
+import org.example.Utils.KeysManager;
+import org.example.Utils.NetUtils;
 
 import java.util.Arrays;
 

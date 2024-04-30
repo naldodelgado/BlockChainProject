@@ -5,7 +5,7 @@ import kademlia_public_ledger.kBlock;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.example.Client.Transaction;
-import org.example.CryptoUtils.KeysManager;
+import org.example.Utils.KeysManager;
 
 import java.io.*;
 import java.util.ArrayList;

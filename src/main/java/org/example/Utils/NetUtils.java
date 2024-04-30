@@ -1,7 +1,4 @@
-package org.example.Kamdelia;
-
-import java.util.Arrays;
-import java.util.logging.Logger;
+package org.example.Utils;
 
 public class NetUtils {
 
@@ -12,11 +9,7 @@ public class NetUtils {
     public static byte[] IPfromString(String value) {
         byte[] ip = new byte[4];
 
-        Logger.getLogger(NetUtils.class.getName()).info("fjdbgfn" + value);
-
         String[] values = value.split("\\.");
-
-        Logger.getLogger(NetUtils.class.getName()).info("rjgndb" + Arrays.toString(values));
 
         assert values.length == 4;
 
@@ -26,6 +19,5 @@ public class NetUtils {
 
         return ip;
     }
-
 
 }
