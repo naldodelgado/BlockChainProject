@@ -44,6 +44,14 @@ public class Block implements Serializable {
         this.merkleRoot = calculateMerkleRoot();
     }
 
+    public Block(int nonce, long timestamp, ArrayList<Transaction> transactions, byte[] previousHash) {
+        this.transactions = transactions;
+        this.previousHash = previousHash;
+        this.nonce = nonce;
+        this.timestamp = timestamp;
+        this.merkleRoot = calculateMerkleRoot();
+    }
+
     public byte[] getMerkleRoot() {
         return merkleRoot;
     }
@@ -74,9 +82,10 @@ public class Block implements Serializable {
         return newBlock;
     }
 
-    public kBlock toGrpc() {
+    public kBlock toGrpc(byte[] sender) {
         kBlock.Builder builder = kBlock.newBuilder()
                 .setNonce(nonce)
+                .setSender(ByteString.copyFrom(sender))
                 .setTimestamp(timestamp)
                 .addAllTransactions(transactions.stream().map(Transaction::toGrpc).collect(Collectors.toList()));
 

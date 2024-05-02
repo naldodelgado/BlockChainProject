@@ -59,12 +59,12 @@ public class Kademlia {
 
     // this should asynchronously propagate the block
     public void propagate(Block data) {
-        executor.submit(() -> routeTable.propagate(data.toGrpc()));
+        executor.submit(() -> routeTable.checkedPropagate(data.toGrpc(routeTable.getId())));
     }
 
     // this should asynchronously propagate the transaction
     public void propagate(Transaction data) {
-        executor.submit(() -> routeTable.propagate(data.toGrpc()));
+        executor.submit(() -> routeTable.checkedPropagate(data.toGrpc(routeTable.getId())));
     }
 
     public Block getBlock(byte[] hash, long index) {

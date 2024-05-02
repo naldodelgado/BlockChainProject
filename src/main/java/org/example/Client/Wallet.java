@@ -78,11 +78,9 @@ public class Wallet implements Serializable {
     }
 
     public Auction startAuction(byte[] idItem, int minAmount, int minIncrement, long timeout) {
-        logger.info("startAuction:1");
         Auction temp = new Auction(idItem, minAmount, minIncrement, timeout, this);
-        logger.info("startAuction:2");
+        blockChain.addTransaction(temp);
         auctions.add(Pair.of(temp, new ArrayList<>()));
-        logger.info("startAuction:3");
         return temp;
     }
 

@@ -45,21 +45,7 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
         responseObserver.onNext(response);
         responseObserver.onCompleted();
 
-    }
-
-    @Override
-    public void findNode(KeyWithSender request, StreamObserver<KBucket> responseObserver) {
-        logger.info("received FindNode request from " + KeysManager.hexString(request.getKey().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + request.getPort());
-
-        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
-
-        KBucket response = KBucket.newBuilder()
-                .addAllNodes(routeTable.findNode(request.getKey().toByteArray()))
-                .setSender(ByteString.copyFrom(routeTable.getId()))
-                .build();
-
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
+        routeTable.propagate(request);
     }
 
     @Override
@@ -78,9 +64,23 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
     }
 
     @Override
-    public void findBlock(KeyWithSender request, StreamObserver<kBlock> responseObserver) {
+    public void findNode(KeyWithSender request, StreamObserver<KBucket> responseObserver) {
+        logger.info("received FindNode request from " + KeysManager.hexString(request.getKey().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + request.getPort());
+
         routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
 
+        KBucket response = KBucket.newBuilder()
+                .addAllNodes(routeTable.findNode(request.getKey().toByteArray()))
+                .setSender(ByteString.copyFrom(routeTable.getId()))
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void findBlock(KeyWithSender request, StreamObserver<BlockOrKBucket> responseObserver) {
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
     }
 
     @Override
