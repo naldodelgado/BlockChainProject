@@ -85,11 +85,11 @@ public class Bid extends Transaction implements Serializable {
     @Override
     public void store() {
     String filePath = "blockchain/transactions/bids/" + Arrays.toString(this.hash()) + ".bid";
-    try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
-        out.writeObject(this);
-    } catch (IOException e) {
-        System.err.println("Error writing to file: " + e.getMessage());
-    }
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
+            out.writeObject(this);
+        } catch (IOException e) {
+            System.err.println("Error writing to file: " + e.getMessage());
+        }
     }
 
     @Override
@@ -109,8 +109,6 @@ public class Bid extends Transaction implements Serializable {
         }
         return bid;
     }
-
-
 
     @Override
     public byte[] hash() {
