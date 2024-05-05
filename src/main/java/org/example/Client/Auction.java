@@ -4,9 +4,7 @@ import com.google.protobuf.ByteString;
 import kademlia_public_ledger.kTransaction;
 import org.example.Utils.KeysManager;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.logging.Logger;
@@ -97,25 +95,6 @@ public class Auction extends Transaction {
     }
 
     @Override
-    public void store() {
-        Logger.getGlobal().info("Storing Auction");
-
-        File file = new File("blockchain/auctions/" + KeysManager.hexString(this.hash) + ":" + KeysManager.hexString(this.sellerPublicKey.getEncoded()) + ".auction");
-
-        try {
-            //TODO: better way to store the auction
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-            objectOutputStream.writeObject(this);
-            objectOutputStream.close();
-            fileOutputStream.close();
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
     public byte[] hash() {
         return hash;
     }
@@ -132,6 +111,36 @@ public class Auction extends Transaction {
                 "signature=" + KeysManager.hexString(signature) + "\n" +
                 '}';
     }
+
+    @Override
+    public void store() {
+        String filePath = "blockchain/transactions/auctions/" + KeysManager.hexString(this.hash()) + ".auction";
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
+            out.writeObject(this);
+        } catch (IOException e) {
+            System.err.println("Error writing to file: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public Auction load(String filePath){
+    Auction auction = null;
+    try {
+        String file = "blockchain/transactions/auctions/" + filePath + ".auction";
+        FileInputStream fileIn = new FileInputStream(file);
+        ObjectInputStream in = new ObjectInputStream(fileIn);
+        auction = (Auction) in.readObject();
+        in.close();
+        fileIn.close();
+    } catch (IOException e) {
+        System.err.println("Error reading to file: " + e.getMessage());
+    } catch (ClassNotFoundException e) {
+        throw new RuntimeException(e);
+    }
+    return auction;
+}
+
+
 
     //Getters
     public PublicKey getSellerPublicKey() {

@@ -4,10 +4,10 @@ import com.google.protobuf.ByteString;
 import kademlia_public_ledger.kTransaction;
 import org.example.Utils.KeysManager;
 
-import java.io.File;
-import java.io.Serializable;
+import java.io.*;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.Date;
 
 public class Bid extends Transaction implements Serializable {
@@ -84,11 +84,33 @@ public class Bid extends Transaction implements Serializable {
 
     @Override
     public void store() {
-        File file = new File("blockchain/actions/" + KeysManager.hexString(auctionHash) + ":" + KeysManager.hexString(senderAddress) + ".auction");
-
-        //TODO: implement a way to append the bid to the auction file
-
+    String filePath = "blockchain/transactions/bids/" + Arrays.toString(this.hash()) + ".bid";
+    try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
+        out.writeObject(this);
+    } catch (IOException e) {
+        System.err.println("Error writing to file: " + e.getMessage());
     }
+    }
+
+    @Override
+    public Bid load(String filePath) {
+        Bid bid = null;
+        try {
+            String file = "blockchain/transactions/bids/" + filePath + ".bid";
+            FileInputStream fileIn = new FileInputStream(file);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            bid = (Bid) in.readObject();
+            in.close();
+            fileIn.close();
+        } catch (IOException e) {
+            System.err.println("Error reading to file: " + e.getMessage());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return bid;
+    }
+
+
 
     @Override
     public byte[] hash() {
