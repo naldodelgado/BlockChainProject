@@ -8,10 +8,7 @@ import org.example.Client.Transaction;
 import org.example.Utils.KeysManager;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Block implements Serializable {
@@ -124,10 +121,11 @@ public class Block implements Serializable {
     public byte[] calculateMerkleRoot() {
         List<byte[]> hashes = new ArrayList<>();
 
-        for (int i = 0; i < transactions.size(); i += 2) {
+        for (int i = 0; i < transactions.size(); i += 1) {
             // hash the transaction
             hashes.add(transactions.get(i).hash());
         }
+        hashes.sort(Comparator.comparing(t -> Arrays.toString(t)));
 
         return calculateMerkleRoot(hashes);
     }
