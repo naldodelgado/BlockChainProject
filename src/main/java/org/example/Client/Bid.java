@@ -2,6 +2,7 @@ package org.example.Client;
 
 import com.google.protobuf.ByteString;
 import kademlia_public_ledger.kTransaction;
+import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
 
 import java.io.*;
@@ -26,7 +27,7 @@ public class Bid extends Transaction implements Serializable {
         this.amount = amount;
         this.timestamp = new Date().getTime();
         this.transactionId = KeysManager.hash(new Object[]{auctionHash, senderAddress, recipientAddress, amount, timestamp});
-        assert transactionId.length == 20;
+        assert transactionId.length == 32;
         this.signature = signature;
     }
 
@@ -79,12 +80,12 @@ public class Bid extends Transaction implements Serializable {
         //TODO: verify that the timestamp is bigger than the timestamp of its auction
         // verify that its auction exists
         // verify that the amount is bigger that the last bid plus the min bid amount
-        return KeysManager.verifySignature(signature, data, KeysManager.getPublicKeyFromBytes(auctionHash));
+        return KeysManager.verifySignature(signature, data, auctionHash);
     }
 
     @Override
     public void store() {
-    String filePath = "blockchain/transactions/bids/" + Arrays.toString(this.hash()) + ".bid";
+    String filePath = FileSystem.bidPath + KeysManager.hexString(this.hash()) + ".bid";
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
             out.writeObject(this);
         } catch (IOException e) {
@@ -128,6 +129,8 @@ public class Bid extends Transaction implements Serializable {
                 '}';
     }
 
+
+
     public byte[] getTransactionId() {
         return transactionId;
     }
@@ -148,6 +151,18 @@ public class Bid extends Transaction implements Serializable {
         return timestamp;
     }
 
-
-
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Bid) {
+            Bid bid = (Bid) obj;
+            return Arrays.equals(this.transactionId, bid.transactionId) &&
+                    Arrays.equals(this.auctionHash, bid.auctionHash) &&
+                    Arrays.equals(this.senderAddress, bid.senderAddress) &&
+                    Arrays.equals(this.recipientAddress, bid.recipientAddress) &&
+                    Arrays.equals(this.signature, bid.signature) &&
+                    this.amount == bid.amount &&
+                    this.timestamp == bid.timestamp;
+        }
+        return false;
+    }
 }

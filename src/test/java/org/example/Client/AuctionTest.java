@@ -1,15 +1,19 @@
 package org.example.Client;
 
+import org.example.Utils.KeysManager;
 import org.junit.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.security.PublicKey;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AuctionTest {
     @Test
     public void testStore() {
-        Auction auction = new Auction(new byte[]{1, 2, 3}, 4, 5, 6, new Wallet());
+        PublicKey publicKey = KeysManager.generateKeys().getPublic();
+        Auction auction = new Auction(new byte[]{1, 2, 3}, 4, 5, 6, publicKey.getEncoded(), new byte[]{7, 8, 9}, new byte[]{10, 11, 12});
         auction.store();
-        Auction loadedAuction = auction.load("Transactions/Auctions/[1, 2, 3, 4, 5, 6].auction");
-        assertEquals(auction, loadedAuction);
+        Auction loadedAuction = auction.load(KeysManager.hexString(auction.hash()));
+        assertTrue(auction.equals(loadedAuction));
     }
 }

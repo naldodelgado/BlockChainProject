@@ -5,10 +5,12 @@ import org.example.Blockchain.Kamdelia.Kademlia;
 import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
+import org.example.Utils.FileSystem;
+import org.example.Utils.KeysManager;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,6 +27,13 @@ public class BlockChain {
     private List<Pair<Auction, Bid>> activeBids;
 
     public BlockChain() {
+        try {
+            Files.createDirectories(Paths.get(FileSystem.blockchainPath));
+            Files.createDirectories(Paths.get(FileSystem.auctionPath));
+            Files.createDirectories(Paths.get(FileSystem.bidPath));
+        } catch (IOException e) {
+            System.err.println("Error creating directories: " + e.getMessage());
+        }
         kademlia = new Kademlia(5000, this);
         this.transactions = new ArrayList<>();
         this.blocks = new ArrayList<>();
@@ -40,7 +49,7 @@ public class BlockChain {
             kademlia.propagate(block); // this call is asynchronous
 
             if (blocks.size() > 10) {
-                blocks.remove(0).store();
+                storeBlock(blocks.remove(0));
             }
 
             blocks.add(block);
@@ -204,6 +213,26 @@ public class BlockChain {
         } catch (IOException e) {
             System.err.println("Error reading from file: " + e.getMessage());
             return Optional.empty();
+        }
+    }
+
+    public void storeBlock(Block b) {
+        File file = new File("blockchain/blocks" + KeysManager.hexString(b.getHash()) + ".block");
+
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+            objectOutputStream.writeObject(this);
+            objectOutputStream.close();
+            fileOutputStream.close();
+
+            //store the transactions
+            for (Transaction t : transactions) {
+                t.store();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

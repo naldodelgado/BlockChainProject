@@ -113,11 +113,12 @@ public class KeysManager {
     }
 
 
-    public static Boolean verifySignature(byte[] signature, byte[] hash, PublicKey publicKey){
+    public static Boolean verifySignature(byte[] signature, byte[] hash, byte[] publicKey){
         try {
             Security.addProvider(new BouncyCastleProvider());
             Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA");
-            ecdsaVerify.initVerify(publicKey);
+            PublicKey pub = getPublicKeyFromBytes(publicKey);
+            ecdsaVerify.initVerify(pub);
             ecdsaVerify.update(hash);
             return ecdsaVerify.verify(signature);
         } catch (NoSuchAlgorithmException e){
@@ -136,5 +137,14 @@ public class KeysManager {
         }
 
         return hex.toString();
+    }
+
+    public static byte[] getBytesFromHex(String s) {
+        //convert hex string to byte[]
+        byte[] byteArray = new byte[s.length() / 2];
+        for (int i = 0; i < byteArray.length; i++) {
+            byteArray[i] = (byte) Integer.parseInt(s.substring(2 * i, 2 * i + 2), 16);
+        }
+        return byteArray;
     }
 }
