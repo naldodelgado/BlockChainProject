@@ -121,11 +121,11 @@ public class Block implements Serializable {
     public byte[] calculateMerkleRoot() {
         List<byte[]> hashes = new ArrayList<>();
 
-        for (int i = 0; i < transactions.size(); i += 1) {
+        for (Transaction transaction : transactions) {
             // hash the transaction
-            hashes.add(transactions.get(i).hash());
+            hashes.add(transaction.hash());
         }
-        hashes.sort(Comparator.comparing(t -> Arrays.toString(t)));
+        hashes.sort(Comparator.comparing(Arrays::toString));
 
         return calculateMerkleRoot(hashes);
     }
