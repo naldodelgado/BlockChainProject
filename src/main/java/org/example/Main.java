@@ -7,6 +7,10 @@ import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
 import org.example.poisson.PoissonProcess;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -26,8 +30,10 @@ public class Main {
     static FileSystem fileSystem;
 
     public static void main(String[] args) {
-        logger.setFilter(new LogFilter());
+        initDataBase();
         fileSystem = new FileSystem();
+        logger.setFilter(new LogFilter());
+
 
         Wallet.setBlockchain(blockChain);
 
@@ -39,6 +45,33 @@ public class Main {
         logger.info(String.format("scheduled auction in %d seconds", time));
         executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
 
+    }
+
+    private static void initDataBase() {
+        Path path = Paths.get("blockchain", "transactions", "auctions");
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        path = Paths.get("blockchain", "transactions", "bids");
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        path = Paths.get("blockchain", "blocks");
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void auctionStarter() {
