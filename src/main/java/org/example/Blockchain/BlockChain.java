@@ -27,13 +27,6 @@ public class BlockChain {
     private List<Pair<Auction, Bid>> activeBids;
 
     public BlockChain() {
-        try {
-            Files.createDirectories(Paths.get(FileSystem.blockchainPath));
-            Files.createDirectories(Paths.get(FileSystem.auctionPath));
-            Files.createDirectories(Paths.get(FileSystem.bidPath));
-        } catch (IOException e) {
-            System.err.println("Error creating directories: " + e.getMessage());
-        }
         kademlia = new Kademlia(5000, this);
         this.transactions = new ArrayList<>();
         this.blocks = new ArrayList<>();
@@ -205,11 +198,7 @@ public class BlockChain {
     public Optional<Transaction> getTransaction(String hash) {
         try (BufferedReader transactionReader = new BufferedReader(new FileReader(hash))) {
             String transactionType = transactionReader.readLine().trim();
-            if (transactionType.equals("Bid")) {
-                return Bid.fromStorage(hash);
-            } else {
-                return Auction.fromStorage(hash);
-            }
+            return Bid.fromStorage(hash);
         } catch (IOException e) {
             System.err.println("Error reading from file: " + e.getMessage());
             return Optional.empty();
