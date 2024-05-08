@@ -1,6 +1,8 @@
 package org.example;
 
 import org.example.Blockchain.BlockChain;
+import org.example.Client.Auction;
+import org.example.Client.Transaction;
 import org.example.Client.Wallet;
 import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
@@ -11,9 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +28,7 @@ public class Main {
     static Logger logger = Logger.getLogger(Main.class.getName());
     static BlockChain blockChain = new BlockChain();
     static FileSystem fileSystem;
+    public static Map<Wallet, List<Transaction>> mapPkTransaction = new HashMap<>();
 
     public static void main(String[] args) {
         initDataBase();
@@ -79,12 +80,18 @@ public class Main {
 
         var wallet = wallets.get((int) (Math.random() * 10));
 
-        blockChain.addTransaction(wallet.startAuction(
+        Auction auction = wallet.startAuction(
                 KeysManager.hash(new Object[]{wallet, Math.random()}),
                 100,
                 10,
                 System.currentTimeMillis() + 1_000_000
-        ));
+        );
+
+        //adding the wallet to the subscription list
+        List<Transaction> transactions = mapPkTransaction.getOrDefault(wallet, new ArrayList<>()); // returns a empty list if there isn't a transaction list associated to the wallet
+        transactions.add(auction);
+        mapPkTransaction.put(wallet, transactions);
+        blockChain.addTransaction(auction);
 
         long time = (long) (auctionTimer.timeForNextEvent() * 1000);
         logger.info(String.format("scheduled auction in %d seconds", time));
