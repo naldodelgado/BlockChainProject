@@ -1,4 +1,4 @@
-package org.example.Blockchain.Kamdelia;
+package org.example.Blockchain.Kademlia;
 
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
@@ -24,8 +24,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.example.Blockchain.Kamdelia.Kademlia.genesisIP;
-import static org.example.Blockchain.Kamdelia.Kademlia.genesisPort;
+import static org.example.Blockchain.Kademlia.Kademlia.genesisIP;
+import static org.example.Blockchain.Kademlia.Kademlia.genesisPort;
 import static org.example.Utils.NetUtils.IPtoString;
 
 class RouteTable {
