@@ -1,17 +1,22 @@
-package org.example.Blockchain.Kamdelia;
+package org.example.Blockchain.Kademlia;
 
 import io.grpc.Server;
-import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
+import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
+import io.grpc.netty.shaded.io.netty.handler.ssl.ApplicationProtocolConfig;
+import io.grpc.netty.shaded.io.netty.handler.ssl.ApplicationProtocolNames;
+import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
+import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import org.example.Blockchain.Block;
 import org.example.Blockchain.BlockChain;
 import org.example.Client.Transaction;
 import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
+import org.example.Utils.NetUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.Inet4Address;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,15 +39,31 @@ public class Kademlia {
         }
 
         try {
+            File certFile = new File("server.crt");
+            File keyFile = new File("server.pem");
+
+            SslContext sslContext = SslContextBuilder
+                    .forServer(certFile, keyFile)
+                    .applicationProtocolConfig(new ApplicationProtocolConfig(
+                            ApplicationProtocolConfig.Protocol.ALPN,
+                            // NO_ADVERTISE is client mode
+                            // ACCEPT is server mode where you accept the client protocols
+                            ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+                            ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+                            ApplicationProtocolNames.HTTP_2))
+                    .build();
+
+
             byte[] id = KeysManager.createSHA1Hash(Arrays.toString(Inet4Address.getLocalHost().getAddress()) + System.currentTimeMillis() + Math.random());
             assert id.length == 20;
 
             routeTable = new RouteTable(id, blockChain);
-            server = ServerBuilder
+            server = NettyServerBuilder
                     .forPort(port)
+                    .sslContext(sslContext)
                     .addService(ServerInterceptors.intercept(new KademliaAPI(routeTable), new IPInterceptor()))
                     .build();
-        } catch (UnknownHostException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -50,7 +71,7 @@ public class Kademlia {
     public void start() {
         try {
             server.start();
-            logger.info("Server started, listening on " + server.getPort());
+            logger.info("Server started, listening on " + NetUtils.IPtoString(routeTable.getIP().getAddress()) + ":" + server.getPort() + " with id" + KeysManager.hexString(routeTable.getId()));
             routeTable.start();
         } catch (IOException e) {
             logger.severe("Server failed to start: " + e.getMessage());

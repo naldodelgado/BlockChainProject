@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.example.Blockchain.Kamdelia;
+package org.example.Blockchain.Kademlia;
 
 import io.grpc.*;
 

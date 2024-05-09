@@ -13,15 +13,8 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.logging.Logger;
 
 public class KeysManager {
-
-    private static final Logger logger = Logger.getLogger(KeysManager.class.getName());
-
-    static {
-        Security.addProvider(new BouncyCastleProvider());
-    }
 
     public static KeyPair generateKeys() {
         try {

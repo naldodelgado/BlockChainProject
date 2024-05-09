@@ -1,4 +1,4 @@
-package org.example.Blockchain.Kamdelia;
+package org.example.Blockchain.Kademlia;
 
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
@@ -14,12 +14,12 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
     private final Logger logger = Logger.getLogger(KademliaAPI.class.getName());
 
     public KademliaAPI(RouteTable routeTable) {
+        logger.setFilter(new LogFilter());
         this.routeTable = routeTable;
     }
 
     @Override
     public void ping(Sender request, StreamObserver<Node> responseObserver) {
-        logger.setFilter(new LogFilter());
         routeTable.add(new KNode(request.getKey().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
 
         logger.info("received Ping request from " + KeysManager.hexString(request.getKey().toByteArray()) + " " + Constant.IP_HEADER_KEY.get() + ":" + request.getPort());

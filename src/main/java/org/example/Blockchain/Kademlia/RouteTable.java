@@ -1,17 +1,17 @@
-package org.example.Blockchain.Kamdelia;
+package org.example.Blockchain.Kademlia;
 
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import kademlia_public_ledger.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.example.Blockchain.Block;
 import org.example.Blockchain.BlockChain;
 import org.example.Client.Transaction;
 import org.example.Utils.KeysManager;
+import org.example.Utils.LogFilter;
 import org.example.Utils.NetUtils;
 import org.example.poisson.PoissonProcess;
 
@@ -24,8 +24,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.example.Blockchain.Kamdelia.Kademlia.genesisIP;
-import static org.example.Blockchain.Kamdelia.Kademlia.genesisPort;
+import static org.example.Blockchain.Kademlia.Kademlia.genesisIP;
+import static org.example.Blockchain.Kademlia.Kademlia.genesisPort;
 import static org.example.Utils.NetUtils.IPtoString;
 
 class RouteTable {
@@ -42,6 +42,7 @@ class RouteTable {
     public RouteTable(byte[] id, BlockChain blockChain) throws UnknownHostException {
         this.blockChain = blockChain;
         this.id = id;
+        logger.setFilter(new LogFilter());
         kBuckets = new Queue[id.length * 8 - 1];
         for (int i = 0; i < id.length * 8 - 1; i++) {
             kBuckets[i] = new ArrayBlockingQueue<>(Math.min(K, 1 << Math.min(i, 30)));
@@ -122,77 +123,6 @@ class RouteTable {
             result[i] = (byte) (a[i] ^ b[i]);
         }
         return result;
-    }
-
-    public static boolean checkEquality(byte[] ip1, byte[] ip2) {
-        for (int i = 0; i < ip1.length; i++) {
-            if ((ip1[i] ^ ip2[i]) != 0)
-                return false;
-        }
-        return true;
-    }
-
-    public void start() {
-        logger.info("started with id: " + KeysManager.hexString(id) + " " + NetUtils.IPtoString(myIp.getAddress()) + ":" + myPort);
-        //executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent() * 1000, TimeUnit.SECONDS);
-
-        if (checkEquality(myIp.getAddress(), genesisIP)) return;
-
-        new Thread(() -> {
-            // try to fill k-buckets with nodes from the network
-            try {
-                Channel channel = NettyChannelBuilder.forAddress(InetAddress.getByAddress(genesisIP).getHostAddress(), genesisPort).usePlaintext().build();
-                ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
-                logger.info("Finding nodes in the network from: " + IPtoString(genesisIP));
-
-                KBucket response = stub.findNode(
-                        KeyWithSender
-                                .newBuilder()
-                                .setKey(ByteString.copyFrom(id))
-                                .setSender(ByteString.copyFrom(id))
-                                .setPort(myPort)
-                                .build()
-                );
-                logger.info(String.format("Found %d nodes in the network", response.getNodesCount()));
-                List<Node> nodes = response.getNodesList();
-
-                add(nodes);
-                logger.info("received nodes: " + nodes.stream().map(KNode::fromNode));
-
-                for (Node node : nodes) {
-                    if (Arrays.equals(node.getId().toByteArray(), id) || (Arrays.equals(node.getIp().toByteArray(), genesisIP) && node.getPort() == genesisPort))
-                        continue;
-
-                    logger.info(String.format(
-                            "Finding nodes in the network from node %s %s",
-                            NetUtils.IPtoString(InetAddress.getByAddress(node.getIp().toByteArray()).getAddress()),
-                            KeysManager.hexString(node.getId().toByteArray())
-                    ));
-
-                    channel = ManagedChannelBuilder.forAddress(
-                            InetAddress.getByAddress(node.getIp().toByteArray()).getHostAddress(),
-                            node.getPort()
-                    ).usePlaintext().build();
-                    stub = ServicesGrpc.newBlockingStub(channel);
-
-                    var newNodes = stub.findNode(
-                            KeyWithSender
-                                    .newBuilder()
-                                    .setKey(ByteString.copyFrom(id))
-                                    .setSender(ByteString.copyFrom(id))
-                                    .setPort(myPort)
-                                    .build()
-                    );
-
-                    logger.info("response from" + KeysManager.hexString(newNodes.getSender().toByteArray()) + " " + NetUtils.IPtoString(node.getIp().toByteArray()) + ":" + node.getPort());
-                    logger.info(newNodes.getNodesList().stream().map(KNode::fromNode).collect(Collectors.toList()).toString());
-
-                    add(newNodes.getNodesList());
-                }
-            } catch (UnknownHostException e) {
-                throw new RuntimeException(e);
-            }
-        }).start();
     }
 
     public void add(List<Node> nodes) {
@@ -416,6 +346,77 @@ class RouteTable {
         checkedPropagate(data);
     }
 
+    public static boolean checkEquality(byte[] ip1, byte[] ip2) {
+        for (int i = 0; i < ip1.length; i++) {
+            if ((ip1[i] ^ ip2[i]) != 0)
+                return false;
+        }
+        return true;
+    }
+
+    public void start() {
+        logger.info("started with id: " + KeysManager.hexString(id) + " " + NetUtils.IPtoString(myIp.getAddress()) + ":" + myPort);
+        //executorService.schedule(this::updateKbuckets, (long) poissonProcess.timeForNextEvent() * 1000, TimeUnit.SECONDS);
+
+        if (checkEquality(myIp.getAddress(), genesisIP)) return;
+
+        new Thread(() -> {
+            // try to fill k-buckets with nodes from the network
+            try {
+                Channel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(genesisIP).getHostAddress(), genesisPort).build();
+                ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
+                logger.info("Finding nodes in the network from: " + IPtoString(genesisIP));
+
+                KBucket response = stub.findNode(
+                        KeyWithSender
+                                .newBuilder()
+                                .setKey(ByteString.copyFrom(id))
+                                .setSender(ByteString.copyFrom(id))
+                                .setPort(myPort)
+                                .build()
+                );
+                logger.info(String.format("Found %d nodes in the network", response.getNodesCount()));
+                List<Node> nodes = response.getNodesList();
+
+                add(nodes);
+                logger.info("received nodes: " + nodes.stream().map(KNode::fromNode));
+
+                for (Node node : nodes) {
+                    if (Arrays.equals(node.getId().toByteArray(), id) || (Arrays.equals(node.getIp().toByteArray(), genesisIP) && node.getPort() == genesisPort))
+                        continue;
+
+                    logger.info(String.format(
+                            "Finding nodes in the network from node %s %s",
+                            NetUtils.IPtoString(InetAddress.getByAddress(node.getIp().toByteArray()).getAddress()),
+                            KeysManager.hexString(node.getId().toByteArray())
+                    ));
+
+                    channel = ManagedChannelBuilder.forAddress(
+                            InetAddress.getByAddress(node.getIp().toByteArray()).getHostAddress(),
+                            node.getPort()
+                    ).build();
+                    stub = ServicesGrpc.newBlockingStub(channel);
+
+                    var newNodes = stub.findNode(
+                            KeyWithSender
+                                    .newBuilder()
+                                    .setKey(ByteString.copyFrom(id))
+                                    .setSender(ByteString.copyFrom(id))
+                                    .setPort(myPort)
+                                    .build()
+                    );
+
+                    logger.info("response from" + KeysManager.hexString(newNodes.getSender().toByteArray()) + " " + NetUtils.IPtoString(node.getIp().toByteArray()) + ":" + node.getPort());
+                    logger.info(newNodes.getNodesList().stream().map(KNode::fromNode).collect(Collectors.toList()).toString());
+
+                    add(newNodes.getNodesList());
+                }
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
+    }
+
     public void checkedPropagate(kTransaction data) {
         int senderDistance = (id.length * 8 - 1) - BitSet.valueOf(distance(data.getSender().toByteArray(), id)).nextSetBit(0);
         logger.info(String.format("Sending transaction with signature %s to nodes with distance less than %s ", KeysManager.hexString(Transaction.fromGrpc(data).hash()), senderDistance));
@@ -458,7 +459,7 @@ class RouteTable {
 
                     logger.info("Checking that the block was effectively");
 
-                    if (checkPropagate(i, node.getId(), data)) {
+                    if (verifyPropagate(i, node.getId(), data)) {
                         break;
                     }
 
@@ -474,7 +475,7 @@ class RouteTable {
         });
     }
 
-    public boolean checkPropagate(int i, byte[] nodeID, kTransaction transaction) {
+    public boolean verifyPropagate(int i, byte[] nodeID, kTransaction transaction) {
         var checkNode = kBuckets[i].stream().filter((t) -> !Arrays.equals(t.getLeft().getId(), nodeID)).findFirst();
 
         if (checkNode.isEmpty())
