@@ -28,6 +28,13 @@ public class KeysManagerTest {
     }
 
     @Test
+    public void TestHash3() {
+        byte[] hash1 = KeysManager.hash(new Object[]{new byte[]{1, 2}});
+        byte[] hash2 = KeysManager.hash(new Object[]{new byte[]{1, 2}});
+        assert Arrays.equals(hash1, hash2);
+    }
+
+    @Test
     public void TestPublicKey() {
         var key = KeysManager.generateKeys();
         byte[] publicKey = key.getPublic().getEncoded();

@@ -20,12 +20,12 @@ public class Bid extends Transaction implements Serializable {
     private final int amount;
     private final long timestamp;
 
-    public Bid(byte[] auctionHash, byte[] senderAddress, byte[] recipientAddress, int amount, byte[] signature) {
+    public Bid(byte[] auctionHash, byte[] senderAddress, byte[] recipientAddress, int amount, byte[] signature, long timestamp) {
         this.auctionHash = auctionHash;
         this.senderAddress = senderAddress;
         this.recipientAddress = recipientAddress;
         this.amount = amount;
-        this.timestamp = new Date().getTime();
+        this.timestamp = timestamp;
         this.transactionId = KeysManager.hash(new Object[]{auctionHash, senderAddress, recipientAddress, amount, timestamp});
         assert transactionId.length == 32;
         this.signature = signature;
@@ -37,26 +37,31 @@ public class Bid extends Transaction implements Serializable {
         this.recipientAddress = recipientAddress.getEncoded();
         this.amount = amount;
         this.timestamp = new Date().getTime();
-        this.transactionId = KeysManager.hash(new Object[]{auctionHash, recipientAddress, amount, timestamp});
-        this.signature = KeysManager.sign(privateKey, new Object[]{auctionHash, recipientAddress, amount, timestamp});
+        this.transactionId = KeysManager.hash(new Object[]{auctionHash, senderAddress.getEncoded(), recipientAddress.getEncoded(), amount, timestamp});
+        this.signature = KeysManager.sign(privateKey, new Object[]{transactionId});
     }
 
     public static Bid fromGrpc(kademlia_public_ledger.Bid bid) {
-        byte[] senderAddress = bid.toByteArray();// public key
+        byte[] senderAddress = bid.getSender().toByteArray();// public key
         byte[] recipientAddress = bid.getReceiver().toByteArray(); // public key
         byte[] signature = bid.getSignature().toByteArray();
         byte[] actionID = bid.getItemID().toByteArray();
         int amount = bid.getAmount();
-        return new Bid(actionID, senderAddress, recipientAddress, amount, signature);
+        long time = bid.getTimestamp();
+
+        return new Bid(actionID, senderAddress, recipientAddress, amount, signature, time);
     }
 
     public kademlia_public_ledger.kTransaction toGrpc(byte[] senderID) {
         return kademlia_public_ledger.kTransaction.newBuilder()
                 .setBid(
                         kademlia_public_ledger.Bid.newBuilder()
-                                .setSender(ByteString.copyFrom(auctionHash))
+                                .setSender(ByteString.copyFrom(senderAddress))
                                 .setReceiver(ByteString.copyFrom(recipientAddress))
                                 .setAmount(amount)
+                                .setTimestamp(timestamp)
+                                .setSignature(ByteString.copyFrom(this.signature))
+                                .setItemID(ByteString.copyFrom(auctionHash))
                                 .build()
                 ).setSender(ByteString.copyFrom(senderID))
                 .build();
@@ -67,9 +72,12 @@ public class Bid extends Transaction implements Serializable {
         return kademlia_public_ledger.kTransaction.newBuilder()
                 .setBid(
                         kademlia_public_ledger.Bid.newBuilder()
-                                .setSender(ByteString.copyFrom(auctionHash))
+                                .setSender(ByteString.copyFrom(senderAddress))
                                 .setReceiver(ByteString.copyFrom(recipientAddress))
                                 .setAmount(amount)
+                                .setTimestamp(timestamp)
+                                .setSignature(ByteString.copyFrom(this.signature))
+                                .setItemID(ByteString.copyFrom(auctionHash))
                                 .build()
                 ).build();
     }

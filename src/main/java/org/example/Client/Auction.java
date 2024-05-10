@@ -45,9 +45,9 @@ public class Auction extends Transaction implements Serializable{
         this.minIncrement=minIncrement;
         this.timeout = timeout;
         this.sellerPublicKey= seller.getPublicKey().getEncoded();
-        this.hash = KeysManager.hash(new Object[]{this.idItem, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey.hashCode()});
+        this.hash = KeysManager.hash(new Object[]{this.idItem, this.minAmount, this.minIncrement, this.timeout, Arrays.hashCode(this.sellerPublicKey)});
 
-        Object[] objects = {this.idItem, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey.hashCode()};
+        Object[] objects = {this.idItem, this.minAmount, this.minIncrement, this.timeout, Arrays.hashCode(this.sellerPublicKey)};
 
         this.signature = KeysManager.sign(seller.getPrivateKey(), objects);
     }
@@ -86,7 +86,7 @@ public class Auction extends Transaction implements Serializable{
         return kTransaction.newBuilder()
                 .setAuction(
                         kademlia_public_ledger.Auction.newBuilder()
-                                .setItemID(com.google.protobuf.ByteString.copyFrom(this.idItem))
+                                .setItemID(ByteString.copyFrom(this.idItem))
                                 .setStartBid(this.minAmount)
                                 .setMinBid(this.minIncrement)
                                 .setTimeout(this.timeout)
@@ -99,14 +99,14 @@ public class Auction extends Transaction implements Serializable{
 
     @Override
     public boolean verify() {
-        Object[] objects = {this.idItem, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey.hashCode()};
+        Object[] objects = {this.idItem, this.minAmount, this.minIncrement, this.timeout, Arrays.hashCode(this.sellerPublicKey)};
         return Arrays.equals(this.hash, KeysManager.hash(objects))
                 || !KeysManager.verifySignature(this.signature, this.hash, this.sellerPublicKey);
     }
 
     @Override
     public byte[] hash() {
-        return KeysManager.hash(new Object[]{this.idItem, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey.hashCode()});
+        return KeysManager.hash(new Object[]{this.idItem, this.minAmount, this.minIncrement, this.timeout, Arrays.hashCode(this.sellerPublicKey)});
     }
 
     @Override

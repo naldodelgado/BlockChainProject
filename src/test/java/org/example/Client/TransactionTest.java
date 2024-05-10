@@ -3,6 +3,8 @@ package org.example.Client;
 import org.example.Utils.KeysManager;
 import org.junit.Test;
 
+import java.util.Arrays;
+
 public class TransactionTest {
 
     @Test
@@ -20,9 +22,17 @@ public class TransactionTest {
     public void TestToBidGrpc() {
         var key = KeysManager.generateKeys();
 
-        Bid a = new Bid(new byte[]{1, 2, 3}, key.getPublic(), key.getPublic(), 1, key.getPrivate());
+        var key2 = KeysManager.generateKeys();
+
+        assert !Arrays.equals(key2.getPublic().getEncoded(), key.getPublic().getEncoded());
+
+        Bid a = new Bid(new byte[]{1, 2, 3}, key.getPublic(), key2.getPublic(), 1, key.getPrivate());
 
         Bid b = (Bid) Transaction.fromGrpc(a.toGrpc());
+
+        System.out.println(a);
+
+        System.out.println(b);
 
         assert a.equals(b);
     }
