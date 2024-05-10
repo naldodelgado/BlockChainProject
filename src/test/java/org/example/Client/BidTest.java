@@ -28,4 +28,10 @@ public class BidTest {
         Files.deleteIfExists(Paths.get("blockchain", "transactions", "bids", KeysManager.hexString(bid.hash()) + ".bid"));
 
     }
+
+    @Test
+    public void testEquals(){
+        Bid bid = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13});
+        assertTrue(bid.equals(bid));
+    }
 }
