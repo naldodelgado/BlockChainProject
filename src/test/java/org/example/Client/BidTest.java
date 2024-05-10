@@ -1,6 +1,7 @@
 package org.example.Client;
 
 import org.example.Utils.KeysManager;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -31,7 +32,7 @@ public class BidTest {
 
     @Test
     public void testEquals(){
-        Bid bid = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13});
-        assertTrue(bid.equals(bid));
+        Bid bid = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13}, 1);
+        Assert.assertEquals(bid, bid);
     }
 }
