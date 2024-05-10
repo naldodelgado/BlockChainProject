@@ -26,4 +26,16 @@ public class KeysManagerTest {
         byte[] hash2 = KeysManager.hash(new Object[]{1});
         assert Arrays.equals(hash1,hash2);
     }
+
+    @Test
+    public void TestPublicKey() {
+        var key = KeysManager.generateKeys();
+        byte[] publicKey = key.getPublic().getEncoded();
+        byte[] privateKey = key.getPrivate().getEncoded();
+
+        KeysManager.getPublicKeyFromBytes(publicKey);
+        KeysManager.getPrivateKeyFromBytes(privateKey);
+    }
+
+
 }
