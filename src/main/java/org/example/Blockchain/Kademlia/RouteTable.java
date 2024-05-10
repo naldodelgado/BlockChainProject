@@ -116,21 +116,7 @@ class RouteTable {
     }
      */
 
-    private static byte[] distance(byte[] a, byte[] b) {
-        byte[] result = new byte[a.length];
-        for (int i = 0; i < a.length; i++) {
-            result[i] = (byte) (a[i] ^ b[i]);
-        }
-        return result;
-    }
 
-    public static boolean checkEquality(byte[] ip1, byte[] ip2) {
-        for (int i = 0; i < ip1.length; i++) {
-            if ((ip1[i] ^ ip2[i]) != 0)
-                return false;
-        }
-        return true;
-    }
 
     public void start() {
         logger.info("started with id: " + KeysManager.hexString(id) + " " + NetUtils.IPtoString(myIp.getAddress()) + ":" + myPort);
@@ -193,10 +179,6 @@ class RouteTable {
                 throw new RuntimeException(e);
             }
         }).start();
-    }
-
-    public void add(List<Node> nodes) {
-        nodes.stream().map(KNode::fromNode).forEach(this::add);
     }
 
     /*
@@ -304,6 +286,14 @@ class RouteTable {
         logger.info(String.format("findNode %s response :\n%s  ", KeysManager.hexString(id), nodes));
 
         return nodes.stream().map(KNode::toNode).collect(Collectors.toList());
+    }
+
+    private static byte[] distance(byte[] a, byte[] b) {
+        byte[] result = new byte[a.length];
+        for (int i = 0; i < a.length; i++) {
+            result[i] = (byte) (a[i] ^ b[i]);
+        }
+        return result;
     }
 
     public void add(KNode kNode) {
@@ -492,6 +482,18 @@ class RouteTable {
 
     public void shutdown() {
         executorService.shutdown();
+    }
+
+    public static boolean checkEquality(byte[] ip1, byte[] ip2) {
+        for (int i = 0; i < ip1.length; i++) {
+            if ((ip1[i] ^ ip2[i]) != 0)
+                return false;
+        }
+        return true;
+    }
+
+    public void add(List<Node> nodes) {
+        nodes.stream().map(KNode::fromNode).forEach(this::add);
     }
 
     public InetAddress getIP() {
