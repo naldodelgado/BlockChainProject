@@ -12,6 +12,7 @@ import org.example.Blockchain.Block;
 import org.example.Blockchain.BlockChain;
 import org.example.Client.Transaction;
 import org.example.Utils.KeysManager;
+import org.example.Utils.LogFilter;
 import org.example.Utils.NetUtils;
 import org.example.poisson.PoissonProcess;
 
@@ -42,6 +43,7 @@ class RouteTable {
     public RouteTable(byte[] id, BlockChain blockChain) throws UnknownHostException {
         this.blockChain = blockChain;
         this.id = id;
+        logger.setFilter(new LogFilter());
         kBuckets = new Queue[id.length * 8 - 1];
         for (int i = 0; i < id.length * 8 - 1; i++) {
             kBuckets[i] = new ArrayBlockingQueue<>(Math.min(K, 1 << Math.min(i, 30)));
