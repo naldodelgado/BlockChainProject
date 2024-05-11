@@ -10,6 +10,8 @@ import org.example.Utils.LogFilter;
 import org.example.poisson.PoissonProcess;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,7 +32,7 @@ public class Main {
     static FileSystem fileSystem;
     public static Map<Wallet, List<Transaction>> mapPkTransaction = new HashMap<>();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws UnknownHostException {
         initDataBase();
         fileSystem = new FileSystem();
         logger.setFilter(new LogFilter());
@@ -42,9 +44,11 @@ public class Main {
             wallets.add(new Wallet());
         }
 
-        int time = (int) (10 + Math.random() * 30);
-        logger.info(String.format("scheduled auction in %d seconds", time));
-        executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
+        if (Arrays.equals(InetAddress.getLocalHost().getAddress(), new byte[]{(byte) 172, 17, 0, 2})) {
+            int time = (int) (10 + Math.random() * 30);
+            logger.info(String.format("scheduled auction in %d seconds", time));
+            executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
+        }
 
     }
 
@@ -91,7 +95,6 @@ public class Main {
         List<Transaction> transactions = mapPkTransaction.getOrDefault(wallet, new ArrayList<>()); // returns a empty list if there isn't a transaction list associated to the wallet
         transactions.add(auction);
         mapPkTransaction.put(wallet, transactions);
-        blockChain.addTransaction(auction);
 
         long time = (long) (auctionTimer.timeForNextEvent() * 1000);
         logger.info(String.format("scheduled auction in %d seconds", time));
