@@ -77,13 +77,11 @@ public class KeysManager {
         }
     }
 
-    public static byte[] sign(PrivateKey privateKey, Object[] data){
-        // hash the data
+    public static byte[] sign(PrivateKey privateKey, byte[] data){
         try {
-            byte[] hash = hash(data);
             Signature signature = Signature.getInstance("SHA256withECDSA", "BC");
             signature.initSign(privateKey);
-            signature.update(hash);
+            signature.update(data);
             return signature.sign();
         } catch (InvalidKeyException | SignatureException e) {
             return null;
@@ -98,7 +96,7 @@ public class KeysManager {
             KeyFactory keyFactory = KeyFactory.getInstance("EC", new BouncyCastleProvider());
             return keyFactory.generatePublic(pubKeySpec);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new RuntimeException(e);
+            return null;
         }
     }
 

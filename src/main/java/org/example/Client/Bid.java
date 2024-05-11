@@ -26,8 +26,7 @@ public class Bid extends Transaction implements Serializable {
         this.recipientAddress = recipientAddress;
         this.amount = amount;
         this.timestamp = timestamp;
-        this.transactionId = KeysManager.hash(new Object[]{auctionHash, senderAddress, recipientAddress, amount, timestamp});
-        assert transactionId.length == 32;
+        this.transactionId = hash();
         this.signature = signature;
     }
 
@@ -37,8 +36,8 @@ public class Bid extends Transaction implements Serializable {
         this.recipientAddress = recipientAddress.getEncoded();
         this.amount = amount;
         this.timestamp = new Date().getTime();
-        this.transactionId = KeysManager.hash(new Object[]{auctionHash, senderAddress.getEncoded(), recipientAddress.getEncoded(), amount, timestamp});
-        this.signature = KeysManager.sign(privateKey, new Object[]{transactionId});
+        this.transactionId = hash();
+        this.signature = KeysManager.sign(privateKey, transactionId);
     }
 
     public static Bid fromGrpc(kademlia_public_ledger.Bid bid) {
@@ -83,12 +82,12 @@ public class Bid extends Transaction implements Serializable {
     }
 
     @Override
-    public boolean verify() {
-        byte[] data = KeysManager.hash(new Object[]{auctionHash, recipientAddress, amount, timestamp});
+    public boolean isValid() {
+        byte[] data = hash();
         //TODO: verify that the timestamp is bigger than the timestamp of its auction
         // verify that its auction exists
         // verify that the amount is bigger that the last bid plus the min bid amount
-        return KeysManager.verifySignature(signature, data, auctionHash);
+        return Arrays.equals(this.transactionId, data) && KeysManager.verifySignature(signature, data, senderAddress);
     }
 
     @Override

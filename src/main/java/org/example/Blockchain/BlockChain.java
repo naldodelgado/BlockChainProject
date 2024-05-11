@@ -25,10 +25,8 @@ public class BlockChain {
     private final Kademlia kademlia;
     private final Executor threads = Executors.newScheduledThreadPool(1);
     private List<Pair<Auction, Bid>> activeBids;
-    static FileSystem fileSystem;
 
     public BlockChain() {
-        fileSystem = new FileSystem();
         try {
             Files.createDirectories(Paths.get(FileSystem.blockchainPath));
             Files.createDirectories(Paths.get(FileSystem.auctionPath));
@@ -86,7 +84,7 @@ public class BlockChain {
     public boolean verify(Block block) {
         //are the transactions valid?
         for (Transaction t : block.getTransactions()) {
-            if (t.verify()) {
+            if (!t.isValid()) {
                 return false;
             }
         }
@@ -116,9 +114,9 @@ public class BlockChain {
         return Arrays.equals(block.getHash(), block.calculateHash());
     }
 
-    public boolean addTransaction(Transaction transaction) {
-        if (!transaction.verify()) {
-            return false;
+    public void addTransaction(Transaction transaction) {
+        if (!transaction.isValid()) {
+            return;
         }
 
         synchronized (transactions){
@@ -129,11 +127,10 @@ public class BlockChain {
 
         if (miner == null) startMining();
 
-        return true;
     }
 
     public boolean addPropagatedTransaction(Transaction transaction) {
-        if (!transaction.verify()) {
+        if (!transaction.isValid()) {
             return false;
         }
 

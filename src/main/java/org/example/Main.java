@@ -28,9 +28,7 @@ public class Main {
     static ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     static Logger logger = Logger.getLogger(Main.class.getName());
     static BlockChain blockChain = new BlockChain();
-
-    static FileSystem fileSystem;
-    public static Map<Wallet, List<Transaction>> mapPkTransaction = new HashMap<>();
+    static Map<Wallet, List<Transaction>> mapPkTransaction = new HashMap<>();
 
     public static void main(String[] args) throws UnknownHostException {
         logger.setFilter(new LogFilter());
