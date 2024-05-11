@@ -25,8 +25,10 @@ public class BlockChain {
     private final Kademlia kademlia;
     private final Executor threads = Executors.newScheduledThreadPool(1);
     private List<Pair<Auction, Bid>> activeBids;
+    static FileSystem fileSystem;
 
     public BlockChain() {
+        fileSystem = new FileSystem();
         try {
             Files.createDirectories(Paths.get(FileSystem.blockchainPath));
             Files.createDirectories(Paths.get(FileSystem.auctionPath));
@@ -81,7 +83,7 @@ public class BlockChain {
         }
     }
 
-    private boolean verify(Block block) {
+    public boolean verify(Block block) {
         //are the transactions valid?
         for (Transaction t : block.getTransactions()) {
             if (t.verify()) {
@@ -91,28 +93,21 @@ public class BlockChain {
 
         synchronized (blocks){
             if (!blocks.isEmpty()) {
-
-                //is the previous hash correct?
-                if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
-                    if (block.getTimestamp() < blocks.get(blocks.size() - 1).getTimestamp())
+                for(int i = 1; i < 8; i++){ // checking if the current block is the successor of the last 8 blocks
+                    if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - i).getHash())){
+                        if (block.getTimestamp() < blocks.get(blocks.size() - i).getTimestamp())
+                            return false;
+                        //is the merkle root correct?
+                        if (!Arrays.equals(block.calculateMerkleRoot(), block.getMerkleRoot()))
+                            return false;
+                        //is the nonce valid?
+                        if (block.isNonceValid())
+                            return false;
+                    } else {
+                        // the previous hash does not match any of the last two blocks
                         return false;
-                } else if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())){
-                    // forking
-                    if (block.getTimestamp() < blocks.get(blocks.size() - 2).getTimestamp())
-                        return false;
-                } else {
-                    // the previous hash does not match any of the last two blocks
-                    return false;
+                    }
                 }
-
-                //is the merkle root correct?
-                if (!Arrays.equals(block.calculateMerkleRoot(), block.getMerkleRoot()))
-                    return false;
-
-                //is the nonce valid?
-                if (block.isNonceValid())
-                    return false;
-
                 //is the hash correct?
                 return Arrays.equals(block.getHash(), block.calculateHash());
             }

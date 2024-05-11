@@ -139,6 +139,7 @@ public class Block implements Serializable {
 
         for (int i = 0; i < hashes.size(); i += 2) {
             newHashes.add(calculateHash(hashes.get(i), hashes.get(i + 1)));
+            //TODO: this is giving index out of bounds exception when using an odd number of transactions
         }
 
         return calculateMerkleRoot(newHashes);

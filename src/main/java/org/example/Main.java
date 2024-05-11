@@ -2,7 +2,6 @@ package org.example;
 
 import org.example.Blockchain.BlockChain;
 import org.example.Client.Wallet;
-import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
 import org.example.poisson.PoissonProcess;
@@ -23,11 +22,10 @@ public class Main {
     static ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     static Logger logger = Logger.getLogger(Main.class.getName());
     static BlockChain blockChain = new BlockChain();
-    static FileSystem fileSystem;
+
 
     public static void main(String[] args) {
         logger.setFilter(new LogFilter());
-        fileSystem = new FileSystem();
 
         Wallet.setBlockchain(blockChain);
 
