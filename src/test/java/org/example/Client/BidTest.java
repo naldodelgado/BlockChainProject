@@ -1,17 +1,38 @@
 package org.example.Client;
 
 import org.example.Utils.KeysManager;
+import org.junit.Assert;
 import org.junit.Test;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BidTest {
     @Test
-    public void testStore() {
-        Bid bid = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13});
-        System.out.println(KeysManager.hexString(bid.hash()));
+    public void testStore() throws IOException {
+        // generate the folder blockchain\transactions\bids\ in the project directory
+        Path path = Paths.get("blockchain", "transactions", "bids");
+        if (!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
+
+        Bid bid = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13}, 1);
         bid.store();
         Bid loadedBid = bid.load(KeysManager.hexString(bid.hash()));
-        assertTrue(bid.equals(loadedBid));
+        assertEquals(bid, loadedBid);
+
+        // delete the file
+        Files.deleteIfExists(Paths.get("blockchain", "transactions", "bids", KeysManager.hexString(bid.hash()) + ".bid"));
+
+    }
+
+    @Test
+    public void testEquals(){
+        Bid bid = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13}, 1);
+        Assert.assertEquals(bid, bid);
     }
 }

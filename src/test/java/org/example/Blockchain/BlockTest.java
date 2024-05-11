@@ -4,24 +4,21 @@ import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Utils.KeysManager;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.security.PublicKey;
 import java.util.ArrayList;
-import java.util.Arrays;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BlockTest {
 
     @Test
     public void testMerkleRoot() {
         PublicKey publicKey = KeysManager.generateKeys().getPublic();
-        PublicKey publicKey2 = KeysManager.generateKeys().getPublic();
         Auction auction = new Auction(new byte[]{1, 2, 3}, 4, 5, 6, publicKey.getEncoded(), new byte[]{7, 8, 9}, new byte[]{10, 11, 12});
         Auction auction2 = new Auction(new byte[]{1, 2, 5}, 3, 2, 1, publicKey.getEncoded(), new byte[]{7, 0, 9}, new byte[]{0, 11, 12});
-        Bid bid = new Bid(new byte[]{1, 2, 4}, new byte[]{4, 5, 7}, new byte[]{7, 0, 9}, 11, new byte[]{101, 12, 13});
-        Bid bid2 = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13});
+        Bid bid = new Bid(new byte[]{1, 2, 4}, new byte[]{4, 5, 7}, new byte[]{7, 0, 9}, 11, new byte[]{101, 12, 13}, 1);
+        Bid bid2 = new Bid(new byte[]{1, 2, 76}, new byte[]{4, 5, 6}, new byte[]{7, 8, 9}, 10, new byte[]{11, 12, 13}, 1);
         ArrayList<Transaction> t = new ArrayList<>();
         ArrayList<Transaction> t2 = new ArrayList<>();
         // Add transactions to the block 1 in some order
@@ -41,6 +38,6 @@ public class BlockTest {
         byte[] merkleRoot = block.getMerkleRoot();
         System.out.println();
         byte[] merkleRoot2 = block2.getMerkleRoot();
-        assertTrue(Arrays.equals(merkleRoot,merkleRoot2));
+        Assert.assertArrayEquals(merkleRoot, merkleRoot2);
     }
 }

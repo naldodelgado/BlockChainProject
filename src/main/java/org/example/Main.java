@@ -1,14 +1,20 @@
 package org.example;
 
 import org.example.Blockchain.BlockChain;
+import org.example.Client.Auction;
+import org.example.Client.Transaction;
 import org.example.Client.Wallet;
 import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
 import org.example.poisson.PoissonProcess;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -23,8 +29,10 @@ public class Main {
     static Logger logger = Logger.getLogger(Main.class.getName());
     static BlockChain blockChain = new BlockChain();
 
+    static FileSystem fileSystem;
+    public static Map<Wallet, List<Transaction>> mapPkTransaction = new HashMap<>();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws UnknownHostException {
         logger.setFilter(new LogFilter());
 
         Wallet.setBlockchain(blockChain);
@@ -33,10 +41,39 @@ public class Main {
             wallets.add(new Wallet());
         }
 
-        int time = (int) (10 + Math.random() * 30);
-        logger.info(String.format("scheduled auction in %d seconds", time));
-        executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
+        if (Arrays.equals(InetAddress.getLocalHost().getAddress(), new byte[]{(byte) 172, 17, 0, 2})) {
+            int time = (int) (10 + Math.random() * 30);
+            logger.info(String.format("scheduled auction in %d seconds", time));
+            executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
+        }
 
+    }
+
+    private static void initDataBase() {
+        Path path = Paths.get("blockchain", "transactions", "auctions");
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        path = Paths.get("blockchain", "transactions", "bids");
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        path = Paths.get("blockchain", "blocks");
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void auctionStarter() {
@@ -44,12 +81,17 @@ public class Main {
 
         var wallet = wallets.get((int) (Math.random() * 10));
 
-        blockChain.addTransaction(wallet.startAuction(
+        Auction auction = wallet.startAuction(
                 KeysManager.hash(new Object[]{wallet, Math.random()}),
                 100,
                 10,
                 System.currentTimeMillis() + 1_000_000
-        ));
+        );
+
+        //adding the wallet to the subscription list
+        List<Transaction> transactions = mapPkTransaction.getOrDefault(wallet, new ArrayList<>()); // returns a empty list if there isn't a transaction list associated to the wallet
+        transactions.add(auction);
+        mapPkTransaction.put(wallet, transactions);
 
         long time = (long) (auctionTimer.timeForNextEvent() * 1000);
         logger.info(String.format("scheduled auction in %d seconds", time));

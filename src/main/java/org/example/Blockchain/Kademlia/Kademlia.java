@@ -1,4 +1,4 @@
-package org.example.Blockchain.Kamdelia;
+package org.example.Blockchain.Kademlia;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -8,6 +8,7 @@ import org.example.Blockchain.BlockChain;
 import org.example.Client.Transaction;
 import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
+import org.example.Utils.NetUtils;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -50,7 +51,7 @@ public class Kademlia {
     public void start() {
         try {
             server.start();
-            logger.info("Server started, listening on " + server.getPort());
+            logger.info("Server started, listening on " + server.getPort() + " with ip " + NetUtils.IPtoString(routeTable.getIP().getAddress()));
             routeTable.start();
         } catch (IOException e) {
             logger.severe("Server failed to start: " + e.getMessage());

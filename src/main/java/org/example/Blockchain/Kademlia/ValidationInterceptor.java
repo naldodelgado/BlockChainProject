@@ -1,4 +1,4 @@
-package org.example.Blockchain.Kamdelia;
+package org.example.Blockchain.Kademlia;
 
 import io.grpc.Metadata;
 import io.grpc.ServerCall;

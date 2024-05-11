@@ -1,7 +1,7 @@
 package org.example.Blockchain;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.example.Blockchain.Kamdelia.Kademlia;
+import org.example.Blockchain.Kademlia.Kademlia;
 import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
@@ -132,6 +132,21 @@ public class BlockChain {
         return true;
     }
 
+    public boolean addPropagatedTransaction(Transaction transaction) {
+        if (!transaction.verify()) {
+            return false;
+        }
+
+        synchronized (transactions) {
+            transactions.add(transaction);
+        }
+
+        if (miner == null) startMining();
+
+        return true;
+    }
+
+
     public boolean addBlock(Block data) {
         if (!verify(data)) return false;
 
@@ -173,7 +188,7 @@ public class BlockChain {
     }
 
     public Optional<Block> getBlock(byte[] hash) {
-        String filePath = "Blocks/" + hash + ".block";
+        String filePath = "Blocks/" + KeysManager.hexString(hash) + ".block";
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             int nonce = Integer.parseInt(reader.readLine().trim());
             long timestamp = Long.parseLong(reader.readLine().trim());
@@ -191,20 +206,6 @@ public class BlockChain {
             // Create and return a new Block object
             return Optional.of(new Block(nonce, timestamp, transactions));
 
-        } catch (IOException e) {
-            System.err.println("Error reading from file: " + e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-    public Optional<Transaction> getTransaction(String hash) {
-        try (BufferedReader transactionReader = new BufferedReader(new FileReader(hash))) {
-            String transactionType = transactionReader.readLine().trim();
-            if (transactionType.equals("Bid")) {
-                return Bid.fromStorage(hash);
-            } else {
-                return Auction.fromStorage(hash);
-            }
         } catch (IOException e) {
             System.err.println("Error reading from file: " + e.getMessage());
             return Optional.empty();
