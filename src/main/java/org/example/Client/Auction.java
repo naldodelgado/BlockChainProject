@@ -55,7 +55,7 @@ public class Auction extends Transaction implements Serializable{
                 auction.getStartBid(),
                 auction.getMinBid(),
                 auction.getTimeout(),
-                KeysManager.getPublicKeyFromBytes(auction.getKey().toByteArray()),
+                auction.getKey().toByteArray(),
                 auction.getHash().toByteArray(),
                 auction.getSignature().toByteArray()
         );

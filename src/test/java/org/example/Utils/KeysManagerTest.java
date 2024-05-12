@@ -2,7 +2,10 @@ package org.example.Utils;
 
 import org.junit.Test;
 
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Arrays;
+import java.util.Optional;
 
 import static org.example.Utils.KeysManager.*;
 
@@ -40,8 +43,14 @@ public class KeysManagerTest {
         byte[] publicKey = key.getPublic().getEncoded();
         byte[] privateKey = key.getPrivate().getEncoded();
 
-        KeysManager.getPublicKeyFromBytes(publicKey);
-        KeysManager.getPrivateKeyFromBytes(privateKey);
+        Optional<PublicKey> publicKey1 = getPublicKeyFromBytes(publicKey);
+        Optional<PrivateKey> privateKey1 = getPrivateKeyFromBytes(privateKey);
+
+        assert publicKey1.isPresent();
+        assert privateKey1.isPresent();
+
+        assert Arrays.equals(publicKey, publicKey1.get().getEncoded());
+        assert Arrays.equals(privateKey, privateKey1.get().getEncoded());
     }
 
 

@@ -13,11 +13,9 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.logging.Logger;
+import java.util.Optional;
 
 public class KeysManager {
-
-    private static final Logger logger = Logger.getLogger(KeysManager.class.getName());
 
     static {
         Security.addProvider(new BouncyCastleProvider());
@@ -33,7 +31,6 @@ public class KeysManager {
         } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     public static byte[] createSHA1Hash(String s) {
@@ -90,22 +87,24 @@ public class KeysManager {
         }
     }
 
-    public static PublicKey getPublicKeyFromBytes(byte[] bKey){
+    public static Optional<PublicKey> getPublicKeyFromBytes(byte[] bKey){
         X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(bKey);
         try {
             KeyFactory keyFactory = KeyFactory.getInstance("EC", new BouncyCastleProvider());
-            return keyFactory.generatePublic(pubKeySpec);
+            return Optional.ofNullable(keyFactory.generatePublic(pubKeySpec));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            return null;
+            return Optional.empty();
         }
     }
 
-    public static PrivateKey getPrivateKeyFromBytes(byte[] pKey){
+    public static Optional<PrivateKey> getPrivateKeyFromBytes(byte[] pKey){
         PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(pKey);
         try {
             KeyFactory keyFactory = KeyFactory.getInstance("EC", new BouncyCastleProvider());
-            return keyFactory.generatePrivate(privateKeySpec);
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            return Optional.ofNullable(keyFactory.generatePrivate(privateKeySpec));
+        } catch (InvalidKeySpecException e) {
+            return Optional.empty();
+        } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
     }
@@ -115,8 +114,9 @@ public class KeysManager {
         try {
             Security.addProvider(new BouncyCastleProvider());
             Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA");
-            PublicKey pub = getPublicKeyFromBytes(publicKey);
-            ecdsaVerify.initVerify(pub);
+            Optional<PublicKey> pub = getPublicKeyFromBytes(publicKey);
+            if (pub.isEmpty()) return false;
+            ecdsaVerify.initVerify(pub.get());
             ecdsaVerify.update(hash);
             return ecdsaVerify.verify(signature);
         } catch (NoSuchAlgorithmException e){
