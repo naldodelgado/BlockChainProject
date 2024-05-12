@@ -11,7 +11,7 @@ import java.util.Arrays;
 
 public class Auction extends Transaction implements Serializable{
 
-    private final byte[] idItem;
+    private final byte[] ItemID;
     private final int minAmount;
     private final int minIncrement;
     private final long timeout;
@@ -19,8 +19,8 @@ public class Auction extends Transaction implements Serializable{
     private final byte[] hash;
     private final byte[] signature;
 
-    public Auction(byte[] idItem, int minAmount, int minIncrement, long timeout, byte[] sellerPublicKey, byte[] hash, byte[] signature) {
-        this.idItem = idItem;
+    public Auction(byte[] ItemID, int minAmount, int minIncrement, long timeout, byte[] sellerPublicKey, byte[] hash, byte[] signature) {
+        this.ItemID = ItemID;
         this.minAmount = minAmount;
         this.minIncrement = minIncrement;
         this.timeout = timeout;
@@ -29,8 +29,8 @@ public class Auction extends Transaction implements Serializable{
         this.signature = signature;
     }
 
-    public Auction(byte[] idItem, int minAmount, int minIncrement, long timeout, PublicKey sellerPublicKey, byte[] hash, byte[] signature) {
-        this.idItem = idItem;
+    public Auction(byte[] ItemID, int minAmount, int minIncrement, long timeout, PublicKey sellerPublicKey, byte[] hash, byte[] signature) {
+        this.ItemID = ItemID;
         this.minAmount = minAmount;
         this.minIncrement = minIncrement;
         this.timeout = timeout;
@@ -39,8 +39,8 @@ public class Auction extends Transaction implements Serializable{
         this.signature = signature;
     }
 
-    public Auction(byte[] idItem, int minAmount, int minIncrement, long timeout, Wallet seller) {
-        this.idItem=idItem;
+    public Auction(byte[] ItemID, int minAmount, int minIncrement, long timeout, Wallet seller) {
+        this.ItemID = ItemID;
         this.minAmount=minAmount;
         this.minIncrement=minIncrement;
         this.timeout = timeout;
@@ -66,7 +66,7 @@ public class Auction extends Transaction implements Serializable{
         return kTransaction.newBuilder()
                 .setAuction(
                         kademlia_public_ledger.Auction.newBuilder()
-                                .setItemID(ByteString.copyFrom(this.idItem))
+                                .setItemID(ByteString.copyFrom(this.ItemID))
                                 .setStartBid(this.minAmount)
                                 .setMinBid(this.minIncrement)
                                 .setTimeout(this.timeout)
@@ -83,7 +83,7 @@ public class Auction extends Transaction implements Serializable{
         return kTransaction.newBuilder()
                 .setAuction(
                         kademlia_public_ledger.Auction.newBuilder()
-                                .setItemID(ByteString.copyFrom(this.idItem))
+                                .setItemID(ByteString.copyFrom(this.ItemID))
                                 .setStartBid(this.minAmount)
                                 .setMinBid(this.minIncrement)
                                 .setTimeout(this.timeout)
@@ -102,13 +102,13 @@ public class Auction extends Transaction implements Serializable{
 
     @Override
     public byte[] hash() {
-        return KeysManager.hash(new Object[]{this.idItem, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey});
+        return KeysManager.hash(new Object[]{this.ItemID, this.minAmount, this.minIncrement, this.timeout, this.sellerPublicKey});
     }
 
     @Override
     public String toString() {
         return "Auction{" +
-                "idItem=" + KeysManager.hexString(idItem) + "\n\t" +
+                "itemID=" + KeysManager.hexString(ItemID) + "\n\t" +
                 "minAmount=" + minAmount + "\n\t" +
                 "minIncrement=" + minIncrement + "\n\t" +
                 "timeout=" + timeout + "\n\t" +
@@ -161,8 +161,8 @@ public class Auction extends Transaction implements Serializable{
         return signature;
     }
 
-    public byte[] get_idItem() {
-        return idItem;
+    public byte[] getItemID() {
+        return ItemID;
     }
 
     public long getMinAmount() {
@@ -181,7 +181,7 @@ public class Auction extends Transaction implements Serializable{
     public boolean equals(Object obj) {
         if (obj instanceof Auction) {
             Auction auction = (Auction) obj;
-            return Arrays.equals(this.idItem, auction.idItem)
+            return Arrays.equals(this.ItemID, auction.ItemID)
                     && this.minAmount == auction.minAmount
                     && this.minIncrement == auction.minIncrement
                     && this.timeout == auction.timeout
