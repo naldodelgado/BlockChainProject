@@ -10,6 +10,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Optional;
 
 public class Bid extends Transaction implements Serializable {
     private final byte[] transactionId;
@@ -100,22 +101,25 @@ public class Bid extends Transaction implements Serializable {
         }
     }
 
-    @Override
-    public Bid load(String filePath) {
-        Bid bid = null;
+
+    public static Optional<Bid> load(byte[] id) {
+        String fileName = "blockchain/transactions/bids/" + KeysManager.hexString(id) + ".bid";
         try {
-            String file = "blockchain/transactions/bids/" + filePath + ".bid";
-            FileInputStream fileIn = new FileInputStream(file);
-            ObjectInputStream in = new ObjectInputStream(fileIn);
-            bid = (Bid) in.readObject();
-            in.close();
-            fileIn.close();
+            if ((new File(fileName).exists())) {
+                FileInputStream file = new FileInputStream(fileName);
+                ObjectInputStream in = new ObjectInputStream(file);
+                Bid bid = (Bid) in.readObject();
+                in.close();
+                file.close();
+                if (bid != null) return Optional.of(bid);
+            }
         } catch (IOException e) {
             System.err.println("Error reading to file: " + e.getMessage());
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-        return bid;
+
+        return Optional.empty();
     }
 
     @Override

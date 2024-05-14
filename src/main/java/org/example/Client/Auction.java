@@ -8,6 +8,7 @@ import org.example.Utils.KeysManager;
 import java.io.*;
 import java.security.PublicKey;
 import java.util.Arrays;
+import java.util.Optional;
 
 public class Auction extends Transaction implements Serializable{
 
@@ -128,25 +129,22 @@ public class Auction extends Transaction implements Serializable{
         }
     }
 
-    @Override
-    public Auction load(String filePath){
-            Auction auction = null;
-            try {
-                String file = "blockchain/transactions/auctions/" + filePath + ".auction";
-                FileInputStream fileIn = new FileInputStream(file);
-                ObjectInputStream in = new ObjectInputStream(fileIn);
-                auction = (Auction) in.readObject();
-                in.close();
-                fileIn.close();
-            } catch (IOException e) {
-                System.err.println("Error reading to file: " + e.getMessage());
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-            return auction;
+    public static Optional<Auction> load(byte[] id) {
+        String fileName = "blockchain/transactions/auctions/" + KeysManager.hexString(id) + ".auction";
+
+        try {
+            FileInputStream fileIn = new FileInputStream(fileName);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            Auction auction = (Auction) in.readObject();
+            in.close();
+            fileIn.close();
+            if (auction != null) return Optional.of(auction);
+        } catch (IOException ignored) {
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return Optional.empty();
     }
-
-
 
     //Getters
     public byte[] getSellerPublicKey() {

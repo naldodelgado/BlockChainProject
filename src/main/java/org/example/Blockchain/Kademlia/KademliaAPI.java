@@ -79,13 +79,15 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
 
     @Override
     public void findBlock(KeyWithSender request, StreamObserver<BlockOrKBucket> responseObserver) {
+
+
         routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
     }
 
     @Override
-    public void findTransaction(KeyWithSender request, StreamObserver<kTransaction> responseObserver) {
+    public void findTransaction(TransactionKey request, StreamObserver<TransactionOrBucket> responseObserver) {
+        routeTable.getValues(request);
         routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
-
     }
 
 }

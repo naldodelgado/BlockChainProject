@@ -11,7 +11,25 @@ service Services {
   rpc StoreTransaction (kTransaction) returns (Node) {}
   rpc FindNode (KeyWithSender) returns (KBucket) {}
   rpc FindBlock (KeyWithSender) returns (BlockOrKBucket) {}
-  rpc FindTransaction (KeyWithSender) returns (kTransaction) {}
+  rpc FindTransaction (TransactionKey) returns (TransactionOrBucket) {}
+  rpc HasTransaction (KeyWithSender) returns (Boolean) {}
+  rpc HasBlock (KeyWithSender) returns (Boolean) {}
+}
+
+message Boolean{
+  bool value = 1;
+}
+
+enum Type{
+  bid = 0;
+  auction = 1;
+}
+
+message TransactionKey{
+  Type type = 1;
+  bytes sender = 2;
+  int32 port = 3;
+  bytes key = 4;
 }
 
 message KeyWithSender {
@@ -20,11 +38,34 @@ message KeyWithSender {
   bytes key = 3;
 }
 
+message TransactionOrBucket{
+  oneof TransactionOrBucket{
+    KBucket bucket = 1;
+    kTransaction transaction = 2;
+  }
+}
+
 message BlockOrKBucket {
   oneof BlockOrKBucket{
     KBucket bucket = 1;
     kBlock block = 2;
   }
+}
+
+message KBucket {
+  bytes sender = 1;
+  int32 port = 2;
+  repeated Node nodes = 3;
+}
+
+message kBlock {
+  bytes sender = 1;
+  int32 port = 2;
+  bytes hash = 3;
+  bytes prev_hash = 4;
+  repeated kTransaction transactions = 5;
+  int32 nonce = 6;
+  int64 timestamp = 7;
 }
 
 message kTransaction {
@@ -45,22 +86,6 @@ message Auction {
   int32 highest = 6;
   int32 startBid = 7;
   int32 minBid = 8;
-}
-
-message KBucket {
-  bytes sender = 1;
-  int32 port = 2;
-  repeated Node nodes = 3;
-}
-
-message kBlock {
-  bytes sender = 1;
-  int32 port = 2;
-  bytes hash = 3;
-  bytes prev_hash = 4;
-  repeated kTransaction transactions = 5;
-  int32 nonce = 6;
-  int64 timestamp = 7;
 }
 
 message Bid {

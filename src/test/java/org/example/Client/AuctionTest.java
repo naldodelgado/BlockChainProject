@@ -8,8 +8,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.PublicKey;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AuctionTest {
     @Test
@@ -23,8 +25,9 @@ public class AuctionTest {
         PublicKey publicKey = KeysManager.generateKeys().getPublic();
         Auction auction = new Auction(new byte[]{1, 2, 3}, 4, 5, 6, publicKey.getEncoded(), new byte[]{7, 8, 9}, new byte[]{10, 11, 12});
         auction.store();
-        Auction loadedAuction = auction.load(KeysManager.hexString(auction.hash()));
-        assertEquals(auction, loadedAuction);
+        Optional<Auction> loadedAuction = Auction.load(auction.hash());
+        assertTrue(loadedAuction.isPresent());
+        assertEquals(auction, loadedAuction.get());
 
         // delete the file
         Files.deleteIfExists(Paths.get("blockchain", "transactions", "auctions", KeysManager.hexString(auction.hash()) + ".auction"));
