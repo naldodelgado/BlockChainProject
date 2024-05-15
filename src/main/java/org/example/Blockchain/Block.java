@@ -5,6 +5,7 @@ import kademlia_public_ledger.kBlock;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.example.Client.Transaction;
+import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
 
 import java.io.*;
@@ -165,21 +166,31 @@ public class Block implements Serializable {
     }
 
     public void store() {
-        File file = new File("blockchain/blocks" + KeysManager.hexString(hash) + ".block");
-        
+        String filePath = FileSystem.blockchainPath + KeysManager.hexString(hash) + ".block";
         try {
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-            objectOutputStream.writeObject(this);
-            objectOutputStream.close();
-            fileOutputStream.close();
-
-            //store the transactions
-            for (Transaction t : transactions) {
-                t.store();
-            }
+            FileOutputStream fileOut = new FileOutputStream(filePath);
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+            out.writeObject(this);
+            out.close();
+            fileOut.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static Optional <Block> load(String filePath) {
+        Block block = null;
+        try {
+            FileInputStream fileIn = new FileInputStream(filePath);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            block = (Block) in.readObject();
+            in.close();
+            fileIn.close();
+            if (block != null) return Optional.of(block);
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error reading to file: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return Optional.empty();
     }
 }

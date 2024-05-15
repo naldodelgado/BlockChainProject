@@ -52,6 +52,10 @@ message BlockOrKBucket {
   }
 }
 
+message BlockChain {
+  repeated kBlock blocks = 1;
+}
+
 message KBucket {
   bytes sender = 1;
   int32 port = 2;

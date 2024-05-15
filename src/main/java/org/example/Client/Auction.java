@@ -130,7 +130,7 @@ public class Auction extends Transaction implements Serializable{
     }
 
     public static Optional<Auction> load(byte[] id) {
-        String fileName = "blockchain/transactions/auctions/" + KeysManager.hexString(id) + ".auction";
+        String fileName = FileSystem.auctionPath + KeysManager.hexString(id) + ".auction";
 
         try {
             FileInputStream fileIn = new FileInputStream(fileName);

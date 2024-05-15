@@ -317,8 +317,9 @@ class RouteTable {
                         .forAddress(IPtoString(node.getIp()), node.getPort())
                         .usePlaintext()
                         .build();
-                ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
-                stub.storeTransaction(data.toBuilder().setSender(ByteString.copyFrom(id)).setPort(myPort).build());
+
+                ServicesGrpc.newBlockingStub(channel)
+                        .storeTransaction(data.toBuilder().setSender(ByteString.copyFrom(id)).setPort(myPort).build());
                 channel.shutdown();
 
                 update(kBuckets[i], node);

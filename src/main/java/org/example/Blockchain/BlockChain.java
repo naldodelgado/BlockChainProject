@@ -6,9 +6,8 @@ import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Utils.FileSystem;
-import org.example.Utils.KeysManager;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -49,7 +48,8 @@ public class BlockChain {
             kademlia.propagate(block); // this call is asynchronous
 
             if (blocks.size() > 10) {
-                storeBlock(blocks.remove(0));
+                blocks.get(0).store();
+                blocks.remove(0);
             }
 
             blocks.add(block);
@@ -143,7 +143,6 @@ public class BlockChain {
         return true;
     }
 
-
     public boolean addBlock(Block data) {
         if (!verify(data)) return false;
 
@@ -184,49 +183,33 @@ public class BlockChain {
         return true;
     }
 
-    public Optional<Block> getBlock(byte[] hash) {
-        String filePath = "Blocks/" + KeysManager.hexString(hash) + ".block";
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            int nonce = Integer.parseInt(reader.readLine().trim());
-            long timestamp = Long.parseLong(reader.readLine().trim());
-            ArrayList<Transaction> transactions = new ArrayList<>();
-
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                String transactionFilePath = "Transactions/" + line.trim() + ".transaction";
-                // call setTransactionStorageGetter to get the transaction from the transaction storage
-                //kademlia.setTransactionStorageGetter();
-            }
-
-            reader.close(); // Close file reader to avoid resource leak
-            // Create and return a new Block object
-            return Optional.of(new Block(nonce, timestamp, transactions));
-
-        } catch (IOException e) {
-            System.err.println("Error reading from file: " + e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-    public void storeBlock(Block b) {
-        File file = new File("blockchain/blocks" + KeysManager.hexString(b.getHash()) + ".block");
-
+    public void uploadBlockchain(){
         try {
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-            objectOutputStream.writeObject(this);
-            objectOutputStream.close();
-            fileOutputStream.close();
-
-            //store the transactions
-            for (Transaction t : transactions) {
-                t.store();
-            }
-
+            Files.walk(Paths.get(FileSystem.blockchainPath))
+                    .filter(Files::isRegularFile)
+                    .forEach(file -> {
+                        String hash = String.valueOf(file.getFileName()).substring(0, String.valueOf(file.getFileName()).lastIndexOf('.'));
+                        Optional<Block> block = Block.load(hash);
+                        //TODO: use kademlia to send the block to the requester
+                    });
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
+
+    public void downloadBlockChain() {
+        // Request the blockchain from a neighbor
+        List<Block> receivedBlockchain = kademlia.requestBlockchain();
+
+        // Process each block in the received blockchain
+        for (Block block : receivedBlockchain) {
+            // Verify the block
+            if (verify(block)) {
+                // Add the block to the local blockchain
+                addBlock(block);
+            }
+        }
+    }
+
 
 }

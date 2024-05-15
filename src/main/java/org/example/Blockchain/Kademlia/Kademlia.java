@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
@@ -83,4 +84,7 @@ public class Kademlia {
         routeTable.shutdown();
     }
 
+    public List<Block> requestBlockchain() {
+    return null;
+    }
 }

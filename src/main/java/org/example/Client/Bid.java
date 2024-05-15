@@ -103,7 +103,7 @@ public class Bid extends Transaction implements Serializable {
 
 
     public static Optional<Bid> load(byte[] id) {
-        String fileName = "blockchain/transactions/bids/" + KeysManager.hexString(id) + ".bid";
+        String fileName = FileSystem.bidPath + KeysManager.hexString(id) + ".bid";
         try {
             if ((new File(fileName).exists())) {
                 FileInputStream file = new FileInputStream(fileName);
