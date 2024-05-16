@@ -69,7 +69,7 @@ public class Kademlia {
         executor.submit(() -> routeTable.checkedPropagate(data.toGrpc(routeTable.getId())));
     }
 
-    public Block getBlock(byte[] hash, long index) {
+    public Block getBlock(byte[] hash) {
         //TODO
         throw new UnsupportedOperationException();
     }

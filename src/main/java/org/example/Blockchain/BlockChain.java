@@ -86,7 +86,9 @@ public class BlockChain {
         }
     }
 
-    public boolean verify(Block block) {
+    public boolean verify(Block block, int n) {
+        int number_of_order = block.getNumber_of_order();
+        if(n>number_of_order) return false; // if this is false then it means it is making us search for a block that was created after the one we are checking. leading us into an infinite loop
         //are the transactions valid?
         for (Transaction t : block.getTransactions()) {
             if (!t.isValid()) {
@@ -106,13 +108,10 @@ public class BlockChain {
                         //is the nonce valid?
                         if (block.isNonceValid())
                             return false;
-                    } else {
-                        // the previous hash does not match any of the last two blocks
-                        return false;
                     }
                 }
-                //is the hash correct?
-                return Arrays.equals(block.getHash(), block.calculateHash());
+                return addBlock(kademlia.getBlock(block.getPreviousHash()),number_of_order-1) && Arrays.equals(block.getHash(), block.calculateHash());
+                /* Checking recursively for the missing blocks && if the has is correct */
             }
         }
 
@@ -148,16 +147,20 @@ public class BlockChain {
         return true;
     }
 
-    public boolean addBlock(Block data) {
-        if (!verify(data)) return false;
+    public boolean addBlock(Block data, int number_of_order) {
+        if(number_of_order<=0) return false; // at this point this function is just carrying the VAR number_of_order to the verify function
+        if (!verify(data,number_of_order)) return false;
 
         synchronized (blocks) {
             if (!blocks.isEmpty()) {
                 if (Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
                     blocks.add(data);
-                } else if (blocks.size() >= 2 && Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())) {
-                    if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp()) {
-                        blocks.set(blocks.size() - 1, data);
+                } else {
+
+                    if (blocks.size() >= 2 && Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())) {
+                        if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp()) {
+                            blocks.set(blocks.size() - 1, data);
+                        }
                     }
                 }
             }
@@ -201,20 +204,4 @@ public class BlockChain {
             throw new RuntimeException(e);
         }
     }
-
-    public void downloadBlockChain() {
-        // Request the blockchain from a neighbor
-        List<Block> receivedBlockchain = kademlia.requestBlockchain();
-
-        // Process each block in the received blockchain
-        for (Block block : receivedBlockchain) {
-            // Verify the block
-            if (verify(block)) {
-                // Add the block to the local blockchain
-                addBlock(block);
-            }
-        }
-    }
-
-
 }

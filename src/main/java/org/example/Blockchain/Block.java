@@ -260,4 +260,8 @@ public class Block implements Serializable {
         }
         return Optional.empty();
     }
+
+    public int getNumber_of_order() {
+        return this.number_of_order;
+    }
 }
