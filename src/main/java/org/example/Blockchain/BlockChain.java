@@ -86,9 +86,7 @@ public class BlockChain {
         }
     }
 
-    public boolean verify(Block block, int n) {
-        int number_of_order = block.getNumber_of_order();
-        if(n>number_of_order) return false; // if this is false then it means it is making us search for a block that was created after the one we are checking. leading us into an infinite loop
+    public boolean verify(Block block) {
         //are the transactions valid?
         for (Transaction t : block.getTransactions()) {
             if (!t.isValid()) {
@@ -97,6 +95,7 @@ public class BlockChain {
         }
 
         synchronized (blocks){
+
             if (!blocks.isEmpty()) {
                 for(int i = 1; i < 8; i++){ // checking if the current block is the successor of the last 8 blocks
                     if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - i).getHash())){
@@ -110,11 +109,17 @@ public class BlockChain {
                             return false;
                     }
                 }
-                addBlock(kademlia.getBlock(block.getPreviousHash()), number_of_order - 1);
-                /* Checking recursively for the missing blocks */
             }
-        }
 
+            Optional<Block> loadedb = Block.load(block.getPreviousHash());
+            if(loadedb.isPresent()) return Arrays.equals(block.getHash(), block.calculateHash());
+
+            Block b = kademlia.getBlock(block.getPreviousHash());
+            if(block.getNumber_of_order() - b.getNumber_of_order() != 1){
+                return false;
+            }
+            else addBlock(kademlia.getBlock(block.getPreviousHash()));
+        }
         return Arrays.equals(block.getHash(), block.calculateHash());
     }
 
@@ -147,9 +152,8 @@ public class BlockChain {
         return true;
     }
 
-    public boolean addBlock(Block data, int number_of_order) {
-        if(number_of_order<=0) return false; // at this point this function is just carrying the VAR number_of_order to the verify function
-        if (!verify(data,number_of_order)) return false;
+    public boolean addBlock(Block data) {
+        if (!verify(data)) return false;
 
         synchronized (blocks) {
             if (!blocks.isEmpty()) {

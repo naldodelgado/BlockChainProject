@@ -30,7 +30,7 @@ public class BlockChainTest {
 
         Block block = new Block(0, 0, t);
         
-        assertTrue(blockChain.verify(block, 1));
+        assertTrue(blockChain.verify(block));
         //TODO: verify is not working as expected
     }
 }
