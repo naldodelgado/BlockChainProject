@@ -9,10 +9,12 @@ import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
 
 import java.io.*;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class Block implements Serializable {
+    private int number_of_order;
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
     private byte[] previousHash = new byte[32]; // Hash of the previous block - will only be defined after mining
     public static final int TRANSACTION_PER_BLOCK = 8; // Maximum number of transactions in a block must be power of 2
@@ -22,20 +24,73 @@ public class Block implements Serializable {
     private byte[] merkleRoot = new byte[32]; // Merkle root of the transactions in this block
     static int numZeros = 0; // Number of zeros required at the start of the hash
 
+
     // Constructor
+
+    // constructor genesis block
+    public Block (){
+        this.transactions = new ArrayList<>();
+        this.timestamp = Date.parse("2024-01-01 00:00:00");
+        this.nonce = 0;
+        this.number_of_order=0;
+        try {
+            PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
+            writer.print(this.number_of_order);
+            writer.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
     public Block(int nonce) {
+        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
+            try {
+                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
+                this.number_of_order = scanner.nextInt()+1;
+                scanner.close();
+                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
+                writer.print(this.number_of_order);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
         this.transactions = new ArrayList<>();
         this.nonce = nonce;
         this.timestamp = new Date().getTime();
     }
 
     public Block(int nonce, long timestamp) {
+        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
+            try {
+                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
+                this.number_of_order = scanner.nextInt()+1;
+                scanner.close();
+                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
+                writer.print(this.number_of_order);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
         this.transactions = new ArrayList<>();
         this.nonce = nonce;
         this.timestamp = timestamp;
     }
 
     public Block(int nonce, long timestamp, ArrayList<Transaction> transactions) {
+        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
+            try {
+                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
+                this.number_of_order = scanner.nextInt()+1;
+                scanner.close();
+                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
+                writer.print(this.number_of_order);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
         this.transactions = transactions;
         this.nonce = nonce;
         this.timestamp = timestamp;
@@ -43,6 +98,18 @@ public class Block implements Serializable {
     }
 
     public Block(int nonce, long timestamp, ArrayList<Transaction> transactions, byte[] previousHash) {
+        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
+            try {
+                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
+                this.number_of_order = scanner.nextInt()+1;
+                scanner.close();
+                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
+                writer.print(this.number_of_order);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
         this.transactions = transactions;
         this.previousHash = previousHash;
         this.nonce = nonce;

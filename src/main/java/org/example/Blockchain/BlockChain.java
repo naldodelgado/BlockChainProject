@@ -24,18 +24,22 @@ public class BlockChain {
     private final Kademlia kademlia;
     private final Executor threads = Executors.newScheduledThreadPool(1);
     private List<Pair<Auction, Bid>> activeBids;
+    private Block genesisBlock;
 
     public BlockChain() {
         try {
             Files.createDirectories(Paths.get(FileSystem.blockchainPath));
             Files.createDirectories(Paths.get(FileSystem.auctionPath));
             Files.createDirectories(Paths.get(FileSystem.bidPath));
+            Files.createDirectories(Paths.get(FileSystem.UtilsPath));
         } catch (IOException e) {
             System.err.println("Error creating directories: " + e.getMessage());
         }
         kademlia = new Kademlia(5000, this);
         this.transactions = new ArrayList<>();
         this.blocks = new ArrayList<>();
+        genesisBlock = new Block();
+        this.blocks.add(genesisBlock);
         kademlia.start();
     }
 
