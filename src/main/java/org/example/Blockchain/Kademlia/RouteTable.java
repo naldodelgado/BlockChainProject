@@ -202,7 +202,7 @@ class RouteTable {
     }
 
     public void propagate(kBlock data) {
-        if (!blockChain.addBlock(Block.fromGrpc(data), 0)) {
+        if (!blockChain.addBlock(Block.fromGrpc(data), 1)) {
             logger.info(String.format("Block with hash %s is invalid", KeysManager.hexString(data.getHash().toByteArray())));
             return;
         }

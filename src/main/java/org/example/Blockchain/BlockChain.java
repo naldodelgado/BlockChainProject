@@ -110,8 +110,8 @@ public class BlockChain {
                             return false;
                     }
                 }
-                return addBlock(kademlia.getBlock(block.getPreviousHash()),number_of_order-1) && Arrays.equals(block.getHash(), block.calculateHash());
-                /* Checking recursively for the missing blocks && if the has is correct */
+                addBlock(kademlia.getBlock(block.getPreviousHash()), number_of_order - 1);
+                /* Checking recursively for the missing blocks */
             }
         }
 
