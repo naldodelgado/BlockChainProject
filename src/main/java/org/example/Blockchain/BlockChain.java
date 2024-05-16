@@ -6,6 +6,7 @@ import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Utils.FileSystem;
+import org.example.Utils.KeysManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,7 +25,7 @@ public class BlockChain {
     private final Kademlia kademlia;
     private final Executor threads = Executors.newScheduledThreadPool(1);
     private List<Pair<Auction, Bid>> activeBids;
-    private Block genesisBlock;
+    private final Block genesisBlock;
 
     public BlockChain() {
         try {
@@ -192,7 +193,7 @@ public class BlockChain {
             Files.walk(Paths.get(FileSystem.blockchainPath))
                     .filter(Files::isRegularFile)
                     .forEach(file -> {
-                        String hash = String.valueOf(file.getFileName()).substring(0, String.valueOf(file.getFileName()).lastIndexOf('.'));
+                        byte[] hash = KeysManager.getBytesFromHex(file.toString().split("\\.")[0]);
                         Optional<Block> block = Block.load(hash);
                         //TODO: use kademlia to send the block to the requester
                     });

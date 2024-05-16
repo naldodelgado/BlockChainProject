@@ -266,7 +266,7 @@ class RouteTable {
             ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(checkNode.get().getKey().getIp()), checkNode.get().getKey().getPort()).usePlaintext().build();
             boolean checkTransaction = ServicesGrpc
                     .newBlockingStub(channel)
-                    .hasTransaction(
+                    .hasBlock(
                             KeyWithSender.newBuilder()
                                     .setSender(ByteString.copyFrom(id))
                                     .setKey(data.getHash())
@@ -352,9 +352,10 @@ class RouteTable {
             boolean checkTransaction = ServicesGrpc
                     .newBlockingStub(channel)
                     .hasTransaction(
-                            KeyWithSender.newBuilder()
+                            TransactionKey.newBuilder()
                                     .setSender(ByteString.copyFrom(id))
                                     .setKey(key)
+                                    .setType(transaction.hasAuction() ? Type.auction : Type.bid)
                                     .setPort(myPort)
                                     .build()
                     ).getValue();
@@ -382,8 +383,42 @@ class RouteTable {
             }
             kBucketIndex--;
         }
+        var a = Transaction.load(transactionKey);
+        if (a.isEmpty())
+            return TransactionOrBucket.newBuilder().build();
 
-        return TransactionOrBucket.newBuilder().setTransaction(Transaction.load(transactionKey)).build();
+        return TransactionOrBucket.newBuilder().setTransaction(a.get().toGrpc()).build();
+    }
+
+    public BlockOrKBucket getValues(KeyWithSender blockKey) {
+        byte[] key = blockKey.getKey().toByteArray();
+        int kBucketIndex = (id.length * 8 - 1) - Math.max(0, BitSet.valueOf(distance(key, id)).nextSetBit(0)) - 1;
+
+        while (kBucketIndex > 0) {
+            if (!kBuckets[kBucketIndex].isEmpty()) {
+                List<Node> nodes = kBuckets[kBucketIndex].stream()
+                        .map((t) -> t.getLeft().toNode())
+                        .collect(Collectors.toList());
+
+                KBucket kBucket = KBucket.newBuilder().addAllNodes(nodes).build();
+
+                return BlockOrKBucket.newBuilder().setBucket(kBucket).build();
+            }
+            kBucketIndex--;
+        }
+
+        Optional<Block> block = Block.load(key);
+
+        return block.map(value -> BlockOrKBucket.newBuilder().setBlock(value.toGrpc(id))).orElseGet(BlockOrKBucket::newBuilder).build();
+
+    }
+
+    public boolean hasTransaction(TransactionKey key) {
+        return Transaction.load(key).isPresent();
+    }
+
+    public boolean hasBlock(KeyWithSender key) {
+        return Block.load(key.getKey().toByteArray()).isPresent();
     }
 
     public void shutdown() {

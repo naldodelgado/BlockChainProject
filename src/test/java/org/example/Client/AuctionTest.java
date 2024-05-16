@@ -25,7 +25,7 @@ public class AuctionTest {
         PublicKey publicKey = KeysManager.generateKeys().getPublic();
         Auction auction = new Auction(new byte[]{1, 2, 3}, 4, 5, 6, publicKey.getEncoded(), new byte[]{7, 8, 9}, new byte[]{10, 11, 12});
         auction.store();
-        Optional<Auction> loadedAuction = Auction.load(auction.hash());
+        Optional<Transaction> loadedAuction = Auction.load(auction.hash());
         assertTrue(loadedAuction.isPresent());
         assertEquals(auction, loadedAuction.get());
 

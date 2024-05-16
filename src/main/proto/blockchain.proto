@@ -12,7 +12,7 @@ service Services {
   rpc FindNode (KeyWithSender) returns (KBucket) {}
   rpc FindBlock (KeyWithSender) returns (BlockOrKBucket) {}
   rpc FindTransaction (TransactionKey) returns (TransactionOrBucket) {}
-  rpc HasTransaction (KeyWithSender) returns (Boolean) {}
+  rpc HasTransaction (TransactionKey) returns (Boolean) {}
   rpc HasBlock (KeyWithSender) returns (Boolean) {}
 }
 

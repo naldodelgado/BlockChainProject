@@ -2,6 +2,7 @@ package org.example.Blockchain.Kademlia;
 
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
+import kademlia_public_ledger.Boolean;
 import kademlia_public_ledger.*;
 import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
@@ -79,15 +80,31 @@ class KademliaAPI extends ServicesGrpc.ServicesImplBase {
 
     @Override
     public void findBlock(KeyWithSender request, StreamObserver<BlockOrKBucket> responseObserver) {
-
-
         routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
+
+        responseObserver.onNext(routeTable.getValues(request));
+        responseObserver.onCompleted();
     }
 
     @Override
     public void findTransaction(TransactionKey request, StreamObserver<TransactionOrBucket> responseObserver) {
-        routeTable.getValues(request);
         routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
+
+        responseObserver.onNext(routeTable.getValues(request));
+        responseObserver.onCompleted();
     }
 
+    @Override
+    public void hasTransaction(TransactionKey request, StreamObserver<Boolean> responseObserver) {
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
+
+        responseObserver.onNext(Boolean.newBuilder().setValue(routeTable.hasTransaction(request)).build());
+    }
+
+    @Override
+    public void hasBlock(KeyWithSender request, StreamObserver<Boolean> responseObserver) {
+        routeTable.add(new KNode(request.getSender().toByteArray(), NetUtils.IPfromString(Constant.IP_HEADER_KEY.get()), request.getPort()));
+
+        responseObserver.onNext(Boolean.newBuilder().setValue(routeTable.hasBlock(request)).build());
+    }
 }

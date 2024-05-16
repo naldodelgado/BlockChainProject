@@ -1,13 +1,14 @@
 package org.example.Client;
 
 import kademlia_public_ledger.TransactionKey;
+import kademlia_public_ledger.Type;
 import kademlia_public_ledger.kTransaction;
 
 import java.util.Optional;
 
 public abstract class Transaction {
 
-    public static Transaction fromGrpc(kademlia_public_ledger.kTransaction transaction) {
+    public static Transaction fromGrpc(kTransaction transaction) {
         if (transaction.hasBid()) {
             return Bid.fromGrpc(transaction.getBid());
         } else {
@@ -15,28 +16,28 @@ public abstract class Transaction {
         }
     }
 
+    public Type getType() {
+        if (this instanceof Auction)
+            return Type.auction;
+        return Type.bid;
+    }
+
     public abstract void store();
 
-    public static kTransaction load(TransactionKey key) {
+    public static Optional<Transaction> load(TransactionKey key) {
         switch (key.getType()) {
             case bid:
-                Optional<Bid> bid = Bid.load(key.getKey().toByteArray());
-                if (bid.isPresent()) {
-                    return bid.get().toGrpc();
-                }
+                return Bid.load(key.getKey().toByteArray());
             case auction:
-                Optional<Auction> auction = Auction.load(key.getKey().toByteArray());
-                if (auction.isPresent()) {
-                    return auction.get().toGrpc();
-                }
+                return Auction.load(key.getKey().toByteArray());
             default:
-                return kTransaction.newBuilder().build();
+                return Optional.empty();
         }
     }
 
-    public abstract kademlia_public_ledger.kTransaction toGrpc(byte[] senderID);
+    public abstract kTransaction toGrpc(byte[] senderID);
 
-    public abstract kademlia_public_ledger.kTransaction toGrpc();
+    public abstract kTransaction toGrpc();
 
     public abstract boolean isValid();
 

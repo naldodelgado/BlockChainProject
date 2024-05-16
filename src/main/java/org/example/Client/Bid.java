@@ -102,7 +102,7 @@ public class Bid extends Transaction implements Serializable {
     }
 
 
-    public static Optional<Bid> load(byte[] id) {
+    public static Optional<Transaction> load(byte[] id) {
         String fileName = FileSystem.bidPath + KeysManager.hexString(id) + ".bid";
         try {
             if ((new File(fileName).exists())) {

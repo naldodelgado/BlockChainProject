@@ -129,7 +129,7 @@ public class Auction extends Transaction implements Serializable{
         }
     }
 
-    public static Optional<Auction> load(byte[] id) {
+    public static Optional<Transaction> load(byte[] id) {
         String fileName = FileSystem.auctionPath + KeysManager.hexString(id) + ".auction";
 
         try {

@@ -245,10 +245,10 @@ public class Block implements Serializable {
         }
     }
 
-    public static Optional <Block> load(String filePath) {
+    public static Optional<Block> load(byte[] key) {
         Block block = null;
         try {
-            FileInputStream fileIn = new FileInputStream(filePath);
+            FileInputStream fileIn = new FileInputStream(KeysManager.hexString(key));
             ObjectInputStream in = new ObjectInputStream(fileIn);
             block = (Block) in.readObject();
             in.close();
