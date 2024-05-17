@@ -232,6 +232,28 @@ public class Block implements Serializable {
         return KeysManager.hash(new Object[]{nonce, previousHash, merkleRoot, timestamp});
     }
 
+    public boolean isValid() {
+        if (number_of_order < 0)
+            return false;
+
+        if (previousHash == null)
+            return false;
+
+        if (transactions.size() != TRANSACTION_PER_BLOCK)
+            return false;
+
+        if (timestamp > 1704067200) //unix time for start of 2024
+            return false;
+
+        if (!isNonceValid())
+            return false;
+
+        if (merkleRoot == null || !Arrays.equals(merkleRoot, calculateMerkleRoot()))
+            return false;
+
+        return hash != null && Arrays.equals(hash, calculateHash());
+    }
+
     public void store() {
         String filePath = FileSystem.blockchainPath + KeysManager.hexString(hash) + ".block";
         try {
@@ -246,11 +268,10 @@ public class Block implements Serializable {
     }
 
     public static Optional<Block> load(byte[] key) {
-        Block block = null;
         try {
             FileInputStream fileIn = new FileInputStream(KeysManager.hexString(key));
             ObjectInputStream in = new ObjectInputStream(fileIn);
-            block = (Block) in.readObject();
+            Block block = (Block) in.readObject();
             in.close();
             fileIn.close();
             if (block != null) return Optional.of(block);

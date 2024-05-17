@@ -97,6 +97,24 @@ public class Auction extends Transaction implements Serializable{
 
     @Override
     public boolean isValid() {
+        if (this.hash == null || this.hash.length != 160)
+            return false;
+
+        if (this.ItemID == null || this.ItemID.length != 160)
+            return false;
+
+        if (this.sellerPublicKey == null || KeysManager.getPublicKeyFromBytes(this.sellerPublicKey).isEmpty())
+            return false;
+
+        if (this.signature == null)
+            return false;
+
+        if (this.minIncrement <= 0 || this.minAmount <= 0)
+            return false;
+
+        if (this.timeout < 1704067200) //unix time for start of 2024
+            return false;
+
         return Arrays.equals(this.hash, hash())
                 && KeysManager.verifySignature(this.signature, this.hash, this.sellerPublicKey);
     }

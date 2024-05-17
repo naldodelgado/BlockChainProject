@@ -46,9 +46,10 @@ message TransactionOrBucket{
 }
 
 message BlockOrKBucket {
+  bool isNone = 1;
   oneof BlockOrKBucket{
-    KBucket bucket = 1;
-    kBlock block = 2;
+    KBucket bucket = 2;
+    kBlock block = 3;
   }
 }
 

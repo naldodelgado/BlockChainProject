@@ -85,9 +85,31 @@ public class Bid extends Transaction implements Serializable {
     @Override
     public boolean isValid() {
         byte[] data = hash();
-        //TODO: verify that the timestamp is bigger than the timestamp of its auction
-        // verify that its auction exists
-        // verify that the amount is bigger that the last bid plus the min bid amount
+
+        if (transactionId == null || transactionId.length != 160)
+            return false;
+
+        if (auctionHash == null || auctionHash.length != 160)
+            return false;
+
+        if (senderAddress == null || KeysManager.getPublicKeyFromBytes(senderAddress).isEmpty())
+            return false;
+
+        if (recipientAddress == null || KeysManager.getPublicKeyFromBytes(recipientAddress).isEmpty())
+            return false;
+
+        if (signature == null)
+            return false;
+
+        if (amount <= 0)
+            return false;
+
+        if (timestamp < 1704067200) //unix time for start of 2024
+            return false;
+
+        // TODO: verify that the timestamp is bigger than the timestamp of its auction
+        //       verify that its auction exists
+        //       verify that the amount is bigger that the last bid plus the min bid amount
         return Arrays.equals(this.transactionId, data) && KeysManager.verifySignature(signature, data, senderAddress);
     }
 
@@ -100,7 +122,6 @@ public class Bid extends Transaction implements Serializable {
             System.err.println("Error writing to file: " + e.getMessage());
         }
     }
-
 
     public static Optional<Transaction> load(byte[] id) {
         String fileName = FileSystem.bidPath + KeysManager.hexString(id) + ".bid";
@@ -139,8 +160,6 @@ public class Bid extends Transaction implements Serializable {
                 "timestamp=" + timestamp + "\n" +
                 '}';
     }
-
-
 
     public byte[] getTransactionId() {
         return transactionId;

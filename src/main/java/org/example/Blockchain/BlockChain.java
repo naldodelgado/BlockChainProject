@@ -93,19 +93,13 @@ public class BlockChain {
                 return false;
             }
         }
+        block.isValid();
 
         synchronized (blocks){
-
             if (!blocks.isEmpty()) {
                 for(int i = 1; i < 8; i++){ // checking if the current block is the successor of the last 8 blocks
                     if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - i).getHash())){
                         if (block.getTimestamp() < blocks.get(blocks.size() - i).getTimestamp())
-                            return false;
-                        //is the merkle root correct?
-                        if (!Arrays.equals(block.calculateMerkleRoot(), block.getMerkleRoot()))
-                            return false;
-                        //is the nonce valid?
-                        if (block.isNonceValid())
                             return false;
                     }
                 }
@@ -120,7 +114,7 @@ public class BlockChain {
             }
             else addBlock(kademlia.getBlock(block.getPreviousHash()));
         }
-        return Arrays.equals(block.getHash(), block.calculateHash());
+        return true;
     }
 
     public void addTransaction(Transaction transaction) {
