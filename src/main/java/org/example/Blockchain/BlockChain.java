@@ -85,12 +85,9 @@ public class BlockChain {
         }
     }
 
-    public boolean verify(Block block) {
-        //are the transactions valid?
-        if (block.getNumberOfOrder() == 1) {
-            return Arrays.equals(block.getPreviousHash(), genesisBlock.getHash());
-        }
+    public boolean addBlock(Block block) {
 
+        // combined functions (addBlock + verify)
         for (Transaction t : block.getTransactions()) {
             if (!t.isValid()) {
                 return false;
@@ -98,24 +95,60 @@ public class BlockChain {
         }
         block.isValid();
 
+        if (block.getNumberOfOrder() == 1 && Arrays.equals(block.getPreviousHash(), genesisBlock.getHash())) {
+            blocks.add(block);
+        }
+
+
         synchronized (blocks) {
-            if (!blocks.isEmpty()) {
-                for (int i = 1; i < 8; i++) { // checking if the current block is the successor of the last 8 blocks
-                    if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - i).getHash())) {
-                        if (block.getTimestamp() < blocks.get(blocks.size() - i).getTimestamp())
-                            return false;
-                    }
-                }
+            int index = block.getNumberOfOrder()-1 - blocks.get(0).getNumberOfOrder(); // the first one in the list
+
+            if(index < 0) return false;
+            if(index > blocks.size()){
+                Optional<Block> loadedb = Block.load(block.getPreviousHash());
+                if(loadedb.isEmpty() || Arrays.equals(block.getHash(), block.calculateHash()))
+                    return false;
+
+                Optional<Block> b = kademlia.getBlock(block.getPreviousHash());
+                if (b.isEmpty() || block.getNumberOfOrder() - b.get().getNumberOfOrder() != 1) return false;
+                if (addBlock(b.get())) return false;
+
+                index = block.getNumberOfOrder()-1 - blocks.get(0).getNumberOfOrder();
             }
 
-            Optional<Block> loadedb = Block.load(block.getPreviousHash());
-            if(loadedb.isPresent()) return Arrays.equals(block.getHash(), block.calculateHash());
-
-            Optional<Block> b = kademlia.getBlock(block.getPreviousHash());
-            if (b.isEmpty() || block.getNumberOfOrder() - b.get().getNumberOfOrder() != 1) {
-                return false;
-            } else return addBlock(b.get());
+            if (Arrays.equals(block.getPreviousHash(), blocks.get(index).getHash())) {
+                if (index < blocks.size() - 1) {
+                    blocks.set(index + 1, block);
+                } else {
+                    blocks.add(block);
+                    blocks.remove(0);
+                }
+            }
         }
+
+        boolean b = miner.getBlock()
+                .getTransactions()
+                .stream()
+                .map(t -> block.getTransactions().contains(t))
+                .reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
+
+        if (!b) {
+            return true;
+        }
+
+        miner.stopMining();
+
+        synchronized (transactions) {
+            transactions.addAll(miner.getBlock().getTransactions());
+        }
+
+        synchronized (transactions) {
+            transactions.removeAll(block.getTransactions());
+        }
+
+        startMining();
+
+        return true;
     }
 
     public void addTransaction(Transaction transaction) {
@@ -147,45 +180,5 @@ public class BlockChain {
         return true;
     }
 
-    public boolean addBlock(Block data) {
-        if (!verify(data)) return false;
 
-        synchronized (blocks) {
-            if (!blocks.isEmpty()) {
-                if (Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
-                    blocks.add(data);
-                } else {
-                    if (blocks.size() >= 2 && Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())) {
-                        if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp()) {
-                            blocks.set(blocks.size() - 1, data);
-                        }
-                    }
-                }
-            }
-        }
-
-        boolean b = miner.getBlock()
-                .getTransactions()
-                .stream()
-                .map(t -> data.getTransactions().contains(t))
-                .reduce(false, (a1, a2) -> a1 || a2); // complexity n^2
-
-        if (!b) {
-            return true;
-        }
-
-        miner.stopMining();
-
-        synchronized (transactions) {
-            transactions.addAll(miner.getBlock().getTransactions());
-        }
-
-        synchronized (transactions) {
-            transactions.removeAll(data.getTransactions());
-        }
-
-        startMining();
-
-        return true;
-    }
 }
