@@ -100,37 +100,23 @@ public class Auction extends Transaction implements Serializable{
 
     @Override
     public boolean isValid() {
-        logger.info("fdshbv" + this.hash.length);
-
         if (this.hash == null || this.hash.length * 8 != 160)
             return false;
-
-        logger.info("asfdgs");
 
         if (this.ItemID == null || this.ItemID.length * 8 != 160)
             return false;
 
-        logger.info("asfdgs");
-
         if (this.sellerPublicKey == null || KeysManager.getPublicKeyFromBytes(this.sellerPublicKey).isEmpty())
             return false;
-
-        logger.info("asfdgs");
 
         if (this.signature == null)
             return false;
 
-        logger.info("asfdgs");
-
         if (this.minIncrement <= 0 || this.minAmount <= 0)
             return false;
 
-        logger.info("asfdgs");
-
         if (this.timeout < 1704067200) //unix time for start of 2024
             return false;
-
-        logger.info("asfdgs");
 
         return Arrays.equals(this.hash, hash())
                 && KeysManager.verifySignature(this.signature, this.hash, this.sellerPublicKey);
