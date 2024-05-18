@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class Block implements Serializable {
-    private int number_of_order;
+    private int numberOfOrder;
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
     private byte[] previousHash = new byte[32]; // Hash of the previous block - will only be defined after mining
     public static final int TRANSACTION_PER_BLOCK = 8; // Maximum number of transactions in a block must be power of 2
@@ -32,10 +32,10 @@ public class Block implements Serializable {
         this.transactions = new ArrayList<>();
         this.timestamp = Date.parse("2024-01-01 00:00:00");
         this.nonce = 0;
-        this.number_of_order=0;
+        this.numberOfOrder = 0;
         try {
             PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-            writer.print(this.number_of_order);
+            writer.print(this.numberOfOrder);
             writer.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -46,10 +46,10 @@ public class Block implements Serializable {
         if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
             try {
                 Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.number_of_order = scanner.nextInt()+1;
+                this.numberOfOrder = scanner.nextInt() + 1;
                 scanner.close();
                 PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.number_of_order);
+                writer.print(this.numberOfOrder);
                 writer.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -64,10 +64,10 @@ public class Block implements Serializable {
         if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
             try {
                 Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.number_of_order = scanner.nextInt()+1;
+                this.numberOfOrder = scanner.nextInt() + 1;
                 scanner.close();
                 PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.number_of_order);
+                writer.print(this.numberOfOrder);
                 writer.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -82,10 +82,10 @@ public class Block implements Serializable {
         if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
             try {
                 Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.number_of_order = scanner.nextInt()+1;
+                this.numberOfOrder = scanner.nextInt() + 1;
                 scanner.close();
                 PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.number_of_order);
+                writer.print(this.numberOfOrder);
                 writer.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -101,10 +101,10 @@ public class Block implements Serializable {
         if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
             try {
                 Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.number_of_order = scanner.nextInt()+1;
+                this.numberOfOrder = scanner.nextInt() + 1;
                 scanner.close();
                 PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.number_of_order);
+                writer.print(this.numberOfOrder);
                 writer.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -233,7 +233,7 @@ public class Block implements Serializable {
     }
 
     public boolean isValid() {
-        if (number_of_order < 0)
+        if (numberOfOrder < 0)
             return false;
 
         if (previousHash == null)
@@ -282,7 +282,7 @@ public class Block implements Serializable {
         return Optional.empty();
     }
 
-    public int getNumber_of_order() {
-        return this.number_of_order;
+    public int getNumberOfOrder() {
+        return this.numberOfOrder;
     }
 }

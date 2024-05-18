@@ -39,9 +39,10 @@ message KeyWithSender {
 }
 
 message TransactionOrBucket{
+  bool isNone = 1;
   oneof TransactionOrBucket{
-    KBucket bucket = 1;
-    kTransaction transaction = 2;
+    KBucket bucket = 2;
+    kTransaction transaction = 3;
   }
 }
 

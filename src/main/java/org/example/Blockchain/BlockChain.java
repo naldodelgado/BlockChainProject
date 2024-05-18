@@ -6,7 +6,6 @@ import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Utils.FileSystem;
-import org.example.Utils.KeysManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -88,6 +87,10 @@ public class BlockChain {
 
     public boolean verify(Block block) {
         //are the transactions valid?
+        if (block.getNumberOfOrder() == 1) {
+            return Arrays.equals(block.getPreviousHash(), genesisBlock.getHash());
+        }
+
         for (Transaction t : block.getTransactions()) {
             if (!t.isValid()) {
                 return false;
@@ -95,10 +98,10 @@ public class BlockChain {
         }
         block.isValid();
 
-        synchronized (blocks){
+        synchronized (blocks) {
             if (!blocks.isEmpty()) {
-                for(int i = 1; i < 8; i++){ // checking if the current block is the successor of the last 8 blocks
-                    if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - i).getHash())){
+                for (int i = 1; i < 8; i++) { // checking if the current block is the successor of the last 8 blocks
+                    if (Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - i).getHash())) {
                         if (block.getTimestamp() < blocks.get(blocks.size() - i).getTimestamp())
                             return false;
                     }
@@ -108,13 +111,11 @@ public class BlockChain {
             Optional<Block> loadedb = Block.load(block.getPreviousHash());
             if(loadedb.isPresent()) return Arrays.equals(block.getHash(), block.calculateHash());
 
-            Block b = kademlia.getBlock(block.getPreviousHash());
-            if(block.getNumber_of_order() - b.getNumber_of_order() != 1){
+            Optional<Block> b = kademlia.getBlock(block.getPreviousHash());
+            if (b.isEmpty() || block.getNumberOfOrder() - b.get().getNumberOfOrder() != 1) {
                 return false;
-            }
-            else addBlock(kademlia.getBlock(block.getPreviousHash()));
+            } else return addBlock(b.get());
         }
-        return true;
     }
 
     public void addTransaction(Transaction transaction) {
@@ -154,7 +155,6 @@ public class BlockChain {
                 if (Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
                     blocks.add(data);
                 } else {
-
                     if (blocks.size() >= 2 && Arrays.equals(data.getPreviousHash(), blocks.get(blocks.size() - 2).getHash())) {
                         if (data.getTimestamp() > blocks.get(blocks.size() - 2).getTimestamp()) {
                             blocks.set(blocks.size() - 1, data);
@@ -187,19 +187,5 @@ public class BlockChain {
         startMining();
 
         return true;
-    }
-
-    public void uploadBlockchain(){
-        try {
-            Files.walk(Paths.get(FileSystem.blockchainPath))
-                    .filter(Files::isRegularFile)
-                    .forEach(file -> {
-                        byte[] hash = KeysManager.getBytesFromHex(file.toString().split("\\.")[0]);
-                        Optional<Block> block = Block.load(hash);
-                        //TODO: use kademlia to send the block to the requester
-                    });
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

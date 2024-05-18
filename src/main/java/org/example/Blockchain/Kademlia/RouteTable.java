@@ -121,10 +121,7 @@ class RouteTable {
     }
 
     public Iterable<Node> findNode(byte[] id) {
-        int index = kBuckets.length - Math.max(0, BitSet.valueOf(distance(id, this.id)).nextSetBit(0)) - 1;
-
-        if (index == kBuckets.length)
-            index = 0;
+        int index = getBucketIndex(id);
 
         List<KNode> nodes = new ArrayList<>(K);
 
@@ -155,8 +152,8 @@ class RouteTable {
     }
 
     public void add(KNode kNode) {
-        int index = (id.length * 8 - 1) - Math.max(0, BitSet.valueOf(distance(kNode.getId(), id)).nextSetBit(0)) - 1;
-        if (index != id.length * 8 - 1) {
+        int index = getBucketIndex(kNode.getId());
+        if (!Arrays.equals(kNode.getId(), id)) {
             add(kNode, index);
         }
     }
@@ -211,9 +208,8 @@ class RouteTable {
     }
 
     public void checkedPropagate(kBlock data) {
-        int senderDistance = (id.length * 8 - 2) - Math.max(0, BitSet.valueOf(distance(data.getSender().toByteArray(), id)).nextSetBit(0));
+        int senderDistance = getBucketIndex(data.getSender().toByteArray());
         logger.info(String.format("Storing block with hash %s to nodes with distance less than %s", KeysManager.hexString(data.getHash().toByteArray()), senderDistance));
-
         IntStream.range(0, senderDistance).parallel().forEach(i -> propagate(data, i));
     }
 
@@ -291,7 +287,7 @@ class RouteTable {
     }
 
     public void checkedPropagate(kTransaction data) {
-        int senderDistance = (id.length * 8 - 2) - Math.max(0, BitSet.valueOf(distance(data.getSender().toByteArray(), id)).nextSetBit(0));
+        int senderDistance = getBucketIndex(data.getSender().toByteArray());
         logger.info(String.format("Sending transaction with hash %s to nodes with distance less than %s ", KeysManager.hexString(Transaction.fromGrpc(data).hash()), senderDistance));
 
         IntStream.range(0, senderDistance).parallel().forEach(i -> propagate(data, i));
@@ -344,7 +340,6 @@ class RouteTable {
         if (checkNode.isEmpty())
             return true;
 
-
         try {
             ByteString key = transaction.hasAuction() ? transaction.getAuction().getKey() : transaction.getBid().getHash();
 
@@ -368,8 +363,7 @@ class RouteTable {
     }
 
     public TransactionOrBucket getValues(TransactionKey transactionKey) {
-        byte[] key = transactionKey.getKey().toByteArray();
-        int kBucketIndex = (id.length * 8 - 1) - Math.max(0, BitSet.valueOf(distance(key, id)).nextSetBit(0)) - 1;
+        int kBucketIndex = getBucketIndex(transactionKey.getKey().toByteArray());
 
         while (kBucketIndex > 0) {
             if (!kBuckets[kBucketIndex].isEmpty()) {
@@ -379,22 +373,22 @@ class RouteTable {
 
                 KBucket kBucket = KBucket.newBuilder().addAllNodes(nodes).build();
 
-                return TransactionOrBucket.newBuilder().setBucket(kBucket).build();
+                return TransactionOrBucket.newBuilder().setIsNone(true).setBucket(kBucket).build();
             }
             kBucketIndex--;
         }
         var a = Transaction.load(transactionKey);
         if (a.isEmpty())
-            return TransactionOrBucket.newBuilder().build();
+            return TransactionOrBucket.newBuilder().setIsNone(true).build();
 
         return TransactionOrBucket.newBuilder().setTransaction(a.get().toGrpc()).build();
     }
 
     public BlockOrKBucket getValues(KeyWithSender blockKey) {
         byte[] key = blockKey.getKey().toByteArray();
-        int kBucketIndex = (id.length * 8 - 1) - Math.max(0, BitSet.valueOf(distance(key, id)).nextSetBit(0)) - 1;
+        int kBucketIndex = getBucketIndex(key);
 
-        while (kBucketIndex > 0) {
+        while (kBucketIndex >= 0) {
             if (!kBuckets[kBucketIndex].isEmpty()) {
                 List<Node> nodes = kBuckets[kBucketIndex].stream()
                         .map((t) -> t.getLeft().toNode())
@@ -402,15 +396,136 @@ class RouteTable {
 
                 KBucket kBucket = KBucket.newBuilder().addAllNodes(nodes).build();
 
-                return BlockOrKBucket.newBuilder().setBucket(kBucket).build();
+                return BlockOrKBucket.newBuilder().setIsNone(true).setBucket(kBucket).build();
             }
             kBucketIndex--;
         }
 
         Optional<Block> block = Block.load(key);
 
-        return block.map(value -> BlockOrKBucket.newBuilder().setBlock(value.toGrpc(id))).orElseGet(BlockOrKBucket::newBuilder).build();
+        return block.map(value -> BlockOrKBucket.newBuilder().setBlock(value.toGrpc(id))).orElseGet(() -> BlockOrKBucket.newBuilder().setIsNone(true)).build();
+    }
 
+    public Optional<Block> getBlock(byte[] key) {
+        int index = getBucketIndex(key);
+
+        var a = kBuckets[index].peek();
+        if (a != null) return getBlock(key, a.getLeft());
+
+        for (int range = 1; index - range >= 0 || index + range < kBuckets.length; range++) {
+            if (index - range >= 0) {
+                a = kBuckets[index].peek();
+                if (a != null) return getBlock(key, a.getLeft());
+            }
+
+            if ((index + range < kBuckets.length)) {
+                a = kBuckets[index].peek();
+                if (a != null) return getBlock(key, a.getLeft());
+            }
+        }
+        logger.info("No nodes found in the routeTable");
+
+        return Optional.empty();
+    }
+
+    private Optional<Block> getBlock(byte[] key, KNode node) {
+        byte[] minDistance = distance(key, node.getId());
+
+        ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).usePlaintext().build();
+        BlockOrKBucket blockOrKBucket = ServicesGrpc.newBlockingStub(channel).findBlock(
+                KeyWithSender.newBuilder()
+                        .setKey(ByteString.copyFrom(key))
+                        .setSender(ByteString.copyFrom(id))
+                        .setPort(5000)
+                        .build()
+        );
+        channel.shutdown();
+
+        while (!blockOrKBucket.hasBlock()) {
+            KBucket bucket = blockOrKBucket.getBucket();
+            add(bucket.getNodesList());
+
+            Optional<Node> a = bucket.getNodesList().stream().min((t1, t2) -> compareDistance(t1.toByteArray(), t2.toByteArray()));
+
+            if (a.isEmpty() || compareDistance(minDistance, a.get().toByteArray()) > 0) {
+                return Optional.empty();
+            }
+
+            channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).usePlaintext().build();
+            blockOrKBucket = ServicesGrpc.newBlockingStub(channel).findBlock(
+                    KeyWithSender.newBuilder()
+                            .setKey(ByteString.copyFrom(key))
+                            .setSender(ByteString.copyFrom(id))
+                            .setPort(5000)
+                            .build()
+            );
+            channel.shutdown();
+
+        }
+
+        return Optional.of(Block.fromGrpc(blockOrKBucket.getBlock()));
+    }
+
+    public Optional<Transaction> getTransaction(byte[] key, Type type) {
+        int index = getBucketIndex(key);
+
+        var a = kBuckets[index].peek();
+        if (a != null) return getTransaction(key, a.getLeft(), type);
+
+        for (int range = 1; index - range >= 0 || index + range < kBuckets.length; range++) {
+            if (index - range >= 0) {
+                a = kBuckets[index].peek();
+                if (a != null) return getTransaction(key, a.getLeft(), type);
+            }
+
+            if ((index + range < kBuckets.length)) {
+                a = kBuckets[index].peek();
+                if (a != null) return getTransaction(key, a.getLeft(), type);
+            }
+        }
+        logger.info("No nodes found in the routeTable");
+
+        return Optional.empty();
+    }
+
+    private Optional<Transaction> getTransaction(byte[] key, KNode node, Type type) {
+        byte[] minDistance = distance(key, node.getId());
+
+        ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).usePlaintext().build();
+        TransactionOrBucket response = ServicesGrpc.newBlockingStub(channel).findTransaction(
+                TransactionKey.newBuilder()
+                        .setKey(ByteString.copyFrom(key))
+                        .setSender(ByteString.copyFrom(id))
+                        .setType(type)
+                        .setPort(5000)
+                        .build()
+        );
+        channel.shutdown();
+
+        while (!response.hasTransaction()) {
+            KBucket bucket = response.getBucket();
+            add(bucket.getNodesList());
+
+            Optional<Node> a = bucket.getNodesList().stream().min((t1, t2) -> compareDistance(t1.toByteArray(), t2.toByteArray()));
+
+            if (a.isEmpty() || compareDistance(minDistance, a.get().toByteArray()) > 0) {
+                return Optional.empty();
+            }
+
+            channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).usePlaintext().build();
+            response = ServicesGrpc.newBlockingStub(channel).findTransaction(
+                    TransactionKey.newBuilder()
+                            .setKey(ByteString.copyFrom(key))
+                            .setType(type)
+                            .setSender(ByteString.copyFrom(id))
+                            .setPort(5000)
+                            .build()
+            );
+            channel.shutdown();
+
+        }
+
+        return Optional.of(Transaction.fromGrpc(response.getTransaction()));
     }
 
     public boolean hasTransaction(TransactionKey key) {
@@ -425,7 +540,21 @@ class RouteTable {
         executorService.shutdown();
     }
 
-    public static boolean checkEquality(byte[] ip1, byte[] ip2) {
+    private int compareDistance(byte[] a, byte[] b) {
+        for (int i = 0; i < a.length; i++) {
+            int cmp = Byte.compare(a[i], b[i]);
+            if (cmp != 0) {
+                return cmp;
+            }
+        }
+        return 0;
+    }
+
+    private int getBucketIndex(byte[] key) {
+        return kBuckets.length - Math.max(0, BitSet.valueOf(distance(key, this.id)).nextSetBit(0)) - 1;
+    }
+
+    private boolean checkEquality(byte[] ip1, byte[] ip2) {
         for (int i = 0; i < ip1.length; i++) {
             if ((ip1[i] ^ ip2[i]) != 0)
                 return false;
@@ -433,7 +562,7 @@ class RouteTable {
         return true;
     }
 
-    private static byte[] distance(byte[] a, byte[] b) {
+    private byte[] distance(byte[] a, byte[] b) {
         byte[] result = new byte[a.length];
         for (int i = 0; i < a.length; i++) {
             result[i] = (byte) (a[i] ^ b[i]);

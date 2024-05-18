@@ -3,6 +3,7 @@ package org.example.Blockchain.Kademlia;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
+import kademlia_public_ledger.Type;
 import org.example.Blockchain.Block;
 import org.example.Blockchain.BlockChain;
 import org.example.Client.Transaction;
@@ -14,7 +15,7 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
@@ -69,14 +70,16 @@ public class Kademlia {
         executor.submit(() -> routeTable.checkedPropagate(data.toGrpc(routeTable.getId())));
     }
 
-    public Block getBlock(byte[] hash) {
-        //TODO
-        throw new UnsupportedOperationException();
+    public Optional<Block> getBlock(byte[] hash) {
+        return routeTable.getBlock(hash);
     }
 
-    public Transaction getTransaction(byte[] hash) {
-        //TODO
-        throw new UnsupportedOperationException();
+    public Optional<Transaction> getBid(byte[] key) {
+        return routeTable.getTransaction(key, Type.bid);
+    }
+
+    public Optional<Transaction> getAuction(byte[] key) {
+        return routeTable.getTransaction(key, Type.auction);
     }
 
     public void stop() {
@@ -84,7 +87,4 @@ public class Kademlia {
         routeTable.shutdown();
     }
 
-    public List<Block> requestBlockchain() {
-    return null;
-    }
 }
