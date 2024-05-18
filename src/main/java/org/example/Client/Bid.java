@@ -86,10 +86,10 @@ public class Bid extends Transaction implements Serializable {
     public boolean isValid() {
         byte[] data = hash();
 
-        if (transactionId == null || transactionId.length != 160)
+        if (transactionId == null || transactionId.length * 8 != 160)
             return false;
 
-        if (auctionHash == null || auctionHash.length != 160)
+        if (auctionHash == null || auctionHash.length * 8 != 160)
             return false;
 
         if (senderAddress == null || KeysManager.getPublicKeyFromBytes(senderAddress).isEmpty())

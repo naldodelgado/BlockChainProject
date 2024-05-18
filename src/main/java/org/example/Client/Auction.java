@@ -9,6 +9,7 @@ import java.io.*;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 public class Auction extends Transaction implements Serializable{
 
@@ -19,6 +20,8 @@ public class Auction extends Transaction implements Serializable{
     private  final byte[] sellerPublicKey;
     private final byte[] hash;
     private final byte[] signature;
+
+    private static final Logger logger = Logger.getLogger(Auction.class.getName());
 
     public Auction(byte[] ItemID, int minAmount, int minIncrement, long timeout, byte[] sellerPublicKey, byte[] hash, byte[] signature) {
         this.ItemID = ItemID;
@@ -97,23 +100,37 @@ public class Auction extends Transaction implements Serializable{
 
     @Override
     public boolean isValid() {
-        if (this.hash == null || this.hash.length != 160)
+        logger.info("fdshbv" + this.hash.length);
+
+        if (this.hash == null || this.hash.length * 8 != 160)
             return false;
 
-        if (this.ItemID == null || this.ItemID.length != 160)
+        logger.info("asfdgs");
+
+        if (this.ItemID == null || this.ItemID.length * 8 != 160)
             return false;
+
+        logger.info("asfdgs");
 
         if (this.sellerPublicKey == null || KeysManager.getPublicKeyFromBytes(this.sellerPublicKey).isEmpty())
             return false;
 
+        logger.info("asfdgs");
+
         if (this.signature == null)
             return false;
+
+        logger.info("asfdgs");
 
         if (this.minIncrement <= 0 || this.minAmount <= 0)
             return false;
 
+        logger.info("asfdgs");
+
         if (this.timeout < 1704067200) //unix time for start of 2024
             return false;
+
+        logger.info("asfdgs");
 
         return Arrays.equals(this.hash, hash())
                 && KeysManager.verifySignature(this.signature, this.hash, this.sellerPublicKey);
