@@ -228,7 +228,7 @@ class RouteTable {
                                 KeysManager.hexString(node.getId())
                         )
                 );
-                ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).build();
+                ManagedChannel channel = ManagedChannelBuilder.forAddress(InetAddress.getByAddress(node.getIp()).getHostAddress(), node.getPort()).usePlaintext().build();
                 ServicesGrpc.ServicesBlockingStub stub = ServicesGrpc.newBlockingStub(channel);
                 stub.storeBlock(data.toBuilder().setSender(data.getSender()).setPort(myPort).build());
                 channel.shutdown();
