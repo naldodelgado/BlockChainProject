@@ -6,6 +6,7 @@ import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Utils.FileSystem;
+import org.example.Utils.KeysManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 public class BlockChain {
     private final List<Block> blocks; // limit 10 block at a time
@@ -25,6 +27,7 @@ public class BlockChain {
     private final Executor threads = Executors.newScheduledThreadPool(1);
     private List<Pair<Auction, Bid>> activeBids;
     private final Block genesisBlock;
+    private final Logger logger = Logger.getLogger(BlockChain.class.getName());
 
     public BlockChain() {
         try {
@@ -34,32 +37,35 @@ public class BlockChain {
             Files.createDirectories(Paths.get(FileSystem.UtilsPath));
         } catch (IOException e) {
             System.err.println("Error creating directories: " + e.getMessage());
+            throw new RuntimeException();
         }
         kademlia = new Kademlia(5000, this);
         this.transactions = new ArrayList<>();
         this.blocks = new ArrayList<>();
         genesisBlock = new Block();
         this.blocks.add(genesisBlock);
+        genesisBlock.store();
         kademlia.start();
     }
 
     //called by the miner once it mines a block
     void propagateBlock(Block block) {
+
         synchronized (blocks){
             if (!Arrays.equals(block.getPreviousHash(), blocks.get(blocks.size() - 1).getHash())) {
+                startMining();
                 return;
             }
             kademlia.propagate(block); // this call is asynchronous
 
-            if (blocks.size() > 10) {
-                blocks.get(0).store();
-                blocks.remove(0);
-            }
+            if (blocks.size() > 10) blocks.remove(0);
 
             blocks.add(block);
-
-            startMining();
         }
+
+        block.store();
+
+        for (var a : block.getTransactions()) a.store();
 
         startMining();
 
@@ -67,46 +73,48 @@ public class BlockChain {
     }
 
     private void startMining() {
+        ArrayList<Transaction> t;
         synchronized (transactions) {
-            if (transactions.size() > Block.TRANSACTION_PER_BLOCK) {
-                ArrayList<Transaction> t = new ArrayList<>(transactions.subList(0, Block.TRANSACTION_PER_BLOCK));
+            if (transactions.size() >= Block.TRANSACTION_PER_BLOCK) {
+                t = new ArrayList<>(transactions.subList(0, Block.TRANSACTION_PER_BLOCK));
                 transactions.removeAll(t);
-
-                Block block = new Block(0, System.currentTimeMillis(), t);
-                if (!blocks.isEmpty()) {
-                    transactions.get(transactions.size() - 1).hash();
-                }
-
-                miner = new Miner(block, this);
-                new Thread(miner).start();
-            } else {
-                miner = null;
-            }
+            } else return;
         }
+
+        Block block;
+        synchronized (blocks) {
+            block = new Block(0, System.currentTimeMillis(), t, blocks.get(blocks.size() - 1).getHash(), blocks.get(blocks.size() - 1).getNumberOfOrder() + 1);
+        }
+        logger.info("Generated block:\n" + block);
+        miner = new Miner(block, this);
+        new Thread(miner).start();
     }
 
     public boolean addBlock(Block block) {
-
         // combined functions (addBlock + verify)
         for (Transaction t : block.getTransactions()) {
             if (!t.isValid()) {
+                logger.info(String.format("Block with hash %s has invalid transactions", KeysManager.hexString(block.getHash())));
                 return false;
             }
         }
-        block.isValid();
+
+        if (!block.isValid()) {
+            logger.info(String.format("Block with hash %s is invalid", KeysManager.hexString(block.getHash())));
+            return false;
+        }
 
         if (block.getNumberOfOrder() == 1 && Arrays.equals(block.getPreviousHash(), genesisBlock.getHash())) {
             blocks.add(block);
         }
 
-
         synchronized (blocks) {
-            int index = block.getNumberOfOrder()-1 - blocks.get(0).getNumberOfOrder(); // the first one in the list
+            int index = block.getNumberOfOrder() - 1 - blocks.get(0).getNumberOfOrder(); // the first one in the list
 
             if(index < 0) return false;
             if(index > blocks.size()){
                 Optional<Block> loadedb = Block.load(block.getPreviousHash());
-                if(loadedb.isEmpty() || Arrays.equals(block.getHash(), block.calculateHash()))
+                if (loadedb.isEmpty() || block.getNumberOfOrder() - loadedb.get().getNumberOfOrder() != 1)
                     return false;
 
                 Optional<Block> b = kademlia.getBlock(block.getPreviousHash());
@@ -116,14 +124,23 @@ public class BlockChain {
                 index = block.getNumberOfOrder()-1 - blocks.get(0).getNumberOfOrder();
             }
 
-            if (Arrays.equals(block.getPreviousHash(), blocks.get(index).getHash())) {
-                if (index < blocks.size() - 1) {
-                    blocks.set(index + 1, block);
-                } else {
-                    blocks.add(block);
-                    blocks.remove(0);
-                }
+            if (!Arrays.equals(block.getPreviousHash(), blocks.get(index).getHash())) {
+                return false;
             }
+
+            if (index < blocks.size() - 1) {
+                //TODO I need to remove the blocks after the one that changed
+                blocks.set(index + 1, block);
+            } else {
+                blocks.add(block);
+                blocks.remove(0);
+            }
+        }
+
+        block.store();
+
+        for (var a : block.getTransactions()) {
+            a.store();
         }
 
         boolean b = miner.getBlock()
@@ -152,6 +169,7 @@ public class BlockChain {
     }
 
     public void addTransaction(Transaction transaction) {
+        logger.info(String.format("received transaction %s", transaction));
         if (!transaction.isValid()) {
             return;
         }
@@ -160,16 +178,16 @@ public class BlockChain {
             transactions.add(transaction);
         }
 
-        threads.execute(() -> kademlia.propagate(transaction));
+        new Thread(() -> kademlia.propagate(transaction)).start();
 
         if (miner == null) startMining();
 
     }
 
     public boolean addPropagatedTransaction(Transaction transaction) {
-        if (!transaction.isValid()) {
-            return false;
-        }
+        logger.info(String.format("received transaction %s", transaction));
+
+        if (!transaction.isValid()) return false;
 
         synchronized (transactions) {
             transactions.add(transaction);

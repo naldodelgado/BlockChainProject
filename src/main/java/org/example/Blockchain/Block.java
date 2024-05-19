@@ -9,7 +9,6 @@ import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
 
 import java.io.*;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -17,104 +16,52 @@ public class Block implements Serializable {
     private int numberOfOrder;
     private byte[] hash = new byte[32]; // Hash of this block - will only be defined after mining
     private byte[] previousHash = new byte[32]; // Hash of the previous block - will only be defined after mining
-    public static final int TRANSACTION_PER_BLOCK = 8; // Maximum number of transactions in a block must be power of 2
+    public static final int TRANSACTION_PER_BLOCK = 4; // Maximum number of transactions in a block must be power of 2
     private final ArrayList<Transaction> transactions; // List of transactions in this block
     private final long timestamp; // Timestamp of when this block was created
     private int nonce; // Nonce used in mining - this can only be set once. IMMUTABLE
     private byte[] merkleRoot = new byte[32]; // Merkle root of the transactions in this block
     static int numZeros = 0; // Number of zeros required at the start of the hash
 
-
-    // Constructor
-
     // constructor genesis block
     public Block (){
         this.transactions = new ArrayList<>();
-        this.timestamp = Date.parse("2024-01-01 00:00:00");
+        this.timestamp = 1704067201;
         this.nonce = 0;
         this.numberOfOrder = 0;
-        try {
-            PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-            writer.print(this.numberOfOrder);
-            writer.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+        this.hash = calculateHash();
     }
 
     public Block(int nonce) {
-        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
-            try {
-                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.numberOfOrder = scanner.nextInt() + 1;
-                scanner.close();
-                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.numberOfOrder);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
         this.transactions = new ArrayList<>();
         this.nonce = nonce;
         this.timestamp = new Date().getTime();
+        this.hash = calculateHash();
     }
 
     public Block(int nonce, long timestamp) {
-        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
-            try {
-                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.numberOfOrder = scanner.nextInt() + 1;
-                scanner.close();
-                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.numberOfOrder);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
         this.transactions = new ArrayList<>();
         this.nonce = nonce;
         this.timestamp = timestamp;
+        this.hash = calculateHash();
     }
 
     public Block(int nonce, long timestamp, ArrayList<Transaction> transactions) {
-        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
-            try {
-                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.numberOfOrder = scanner.nextInt() + 1;
-                scanner.close();
-                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.numberOfOrder);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
         this.transactions = transactions;
         this.nonce = nonce;
         this.timestamp = timestamp;
         this.merkleRoot = calculateMerkleRoot();
+        this.hash = calculateHash();
     }
 
-    public Block(int nonce, long timestamp, ArrayList<Transaction> transactions, byte[] previousHash) {
-        if(Paths.get(FileSystem.UtilsPath).toFile().exists()){
-            try {
-                Scanner scanner = new Scanner(new File(FileSystem.UtilsPath));
-                this.numberOfOrder = scanner.nextInt() + 1;
-                scanner.close();
-                PrintWriter writer = new PrintWriter(FileSystem.UtilsPath);
-                writer.print(this.numberOfOrder);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
+    public Block(int nonce, long timestamp, ArrayList<Transaction> transactions, byte[] previousHash, int numberOfOrder) {
         this.transactions = transactions;
         this.previousHash = previousHash;
         this.nonce = nonce;
         this.timestamp = timestamp;
         this.merkleRoot = calculateMerkleRoot();
+        this.numberOfOrder = numberOfOrder;
+        this.hash = calculateHash();
     }
 
     public byte[] getMerkleRoot() {
@@ -152,18 +99,16 @@ public class Block implements Serializable {
                 .setNonce(nonce)
                 .setSender(ByteString.copyFrom(sender))
                 .setTimestamp(timestamp)
-                .addAllTransactions(transactions.stream().map(Transaction::toGrpc).collect(Collectors.toList()));
-
-        if (previousHash != null) {
-            builder.setPrevHash(ByteString.copyFrom(previousHash));
-        }
+                .setHash(ByteString.copyFrom(hash))
+                .addAllTransactions(transactions.stream().map(Transaction::toGrpc).collect(Collectors.toList()))
+                .setPrevHash(ByteString.copyFrom(previousHash));
 
         return builder.build();
     }
 
     public void setNonce(int nonce) {
         this.nonce = nonce;
-        this.hash = KeysManager.hash(new Object[]{nonce, previousHash, merkleRoot, timestamp});
+        this.hash = calculateHash();
     }
 
     public byte[] getPreviousHash() {
@@ -275,14 +220,26 @@ public class Block implements Serializable {
             in.close();
             fileIn.close();
             if (block != null) return Optional.of(block);
-        } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Error reading to file: " + e.getMessage());
-            e.printStackTrace();
+        } catch (IOException | ClassNotFoundException ignored) {
         }
+
         return Optional.empty();
     }
 
     public int getNumberOfOrder() {
         return this.numberOfOrder;
+    }
+
+    @Override
+    public String toString() {
+        return "Block{" +
+                "numberOfOrder=" + numberOfOrder +
+                ", hash=" + Arrays.toString(hash) +
+                ", previousHash=" + Arrays.toString(previousHash) +
+                ", transactions=" +
+                ", timestamp=" + timestamp +
+                ", nonce=" + nonce +
+                ", merkleRoot=" + Arrays.toString(merkleRoot) +
+                '}';
     }
 }
