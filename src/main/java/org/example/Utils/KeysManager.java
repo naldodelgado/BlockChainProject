@@ -2,7 +2,6 @@ package org.example.Utils;
 
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
-import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.ByteArrayOutputStream;
@@ -59,7 +58,7 @@ public class KeysManager {
             byte[] stream = byteArrayOutputStream.toByteArray();
 
             // Using SHA-256 as an example hash function
-            Digest digest = new SHA256Digest();
+            Digest digest = new SHA1Digest();
             byte[] hash = new byte[digest.getDigestSize()];
 
             digest.update(stream, 0, stream.length);
