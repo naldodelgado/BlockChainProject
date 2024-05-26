@@ -8,12 +8,8 @@ import org.example.Utils.KeysManager;
 import org.example.Utils.LogFilter;
 import org.example.poisson.PoissonProcess;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -23,7 +19,7 @@ import java.util.logging.Logger;
 public class Main {
 
     static List<Wallet> wallets = new ArrayList<>(10);
-    static PoissonProcess auctionTimer = new PoissonProcess(16, new Random((int) (Math.random() * 1000)));
+    static PoissonProcess auctionTimer = new PoissonProcess(400, new Random((int) (Math.random() * 1000)));
     static PoissonProcess bidder = new PoissonProcess(16, new Random((int) (Math.random() * 1000)));
     static ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     static Logger logger = Logger.getLogger(Main.class.getName());
@@ -47,33 +43,6 @@ public class Main {
 
     }
 
-    private static void initDataBase() {
-        Path path = Paths.get("blockchain", "transactions", "auctions");
-        try {
-            if (!Files.exists(path)) {
-                Files.createDirectories(path);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        path = Paths.get("blockchain", "transactions", "bids");
-        try {
-            if (!Files.exists(path)) {
-                Files.createDirectories(path);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        path = Paths.get("blockchain", "blocks");
-        try {
-            if (!Files.exists(path)) {
-                Files.createDirectories(path);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public static void auctionStarter() {
         logger.info("generating auction");
 
@@ -87,7 +56,8 @@ public class Main {
         );
 
         //adding the wallet to the subscription list
-        List<Transaction> transactions = mapPkTransaction.getOrDefault(wallet, new ArrayList<>()); // returns a empty list if there isn't a transaction list associated to the wallet
+        List<Transaction> transactions = mapPkTransaction.getOrDefault(wallet, new ArrayList<>());
+        // returns a empty list if there isn't a transaction list associated to the wallet
         transactions.add(auction);
         mapPkTransaction.put(wallet, transactions);
 

@@ -41,6 +41,8 @@ class RouteTable {
     public RouteTable(byte[] id, BlockChain blockChain) throws UnknownHostException {
         this.blockChain = blockChain;
         this.id = id;
+        KNode.myId = id;
+        KNode.myPort = myPort;
         logger.setFilter(new LogFilter());
         kBuckets = new Queue[id.length * 8 - 1];
         for (int i = 0; i < id.length * 8 - 1; i++) {
@@ -491,41 +493,27 @@ class RouteTable {
     private Optional<Transaction> getTransaction(byte[] key, KNode node, Type type) {
         byte[] minDistance = distance(key, node.getId());
 
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).usePlaintext().build();
-        TransactionOrBucket response = ServicesGrpc.newBlockingStub(channel).findTransaction(
-                TransactionKey.newBuilder()
-                        .setKey(ByteString.copyFrom(key))
-                        .setSender(ByteString.copyFrom(id))
-                        .setType(type)
-                        .setPort(5000)
-                        .build()
-        );
-        channel.shutdown();
+        Optional<TransactionOrBucket> response = node.toClient().findTransaction(key, type);
 
-        while (!response.hasTransaction()) {
-            KBucket bucket = response.getBucket();
+        if (response.isEmpty()) return Optional.empty();
+        TransactionOrBucket message = response.get();
+
+        while (!message.hasTransaction()) {
+            if (message.getIsNone())
+                return Optional.empty();
+
+            KBucket bucket = message.getBucket();
             add(bucket.getNodesList());
 
             Optional<Node> a = bucket.getNodesList().stream().min((t1, t2) -> compareDistance(t1.toByteArray(), t2.toByteArray()));
 
-            if (a.isEmpty() || compareDistance(minDistance, a.get().toByteArray()) > 0) {
+            if (a.isEmpty() || compareDistance(minDistance, a.get().toByteArray()) > 0)
                 return Optional.empty();
-            }
 
-            channel = ManagedChannelBuilder.forAddress(IPtoString(node.getIp()), node.getPort()).usePlaintext().build();
-            response = ServicesGrpc.newBlockingStub(channel).findTransaction(
-                    TransactionKey.newBuilder()
-                            .setKey(ByteString.copyFrom(key))
-                            .setType(type)
-                            .setSender(ByteString.copyFrom(id))
-                            .setPort(5000)
-                            .build()
-            );
-            channel.shutdown();
-
+            node.toClient().findTransaction(key, type);
         }
 
-        return Optional.of(Transaction.fromGrpc(response.getTransaction()));
+        return Optional.of(Transaction.fromGrpc(message.getTransaction()));
     }
 
     public boolean hasTransaction(TransactionKey key) {

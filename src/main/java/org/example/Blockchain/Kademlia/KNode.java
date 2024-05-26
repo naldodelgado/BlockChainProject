@@ -9,10 +9,10 @@ import java.util.Arrays;
 
 class KNode {
     private final byte[] id;
-
     private final byte[] ip;
-
     private final int port;
+    public static byte[] myId;
+    public static int myPort;
 
     public KNode(byte[] id, byte[] ip, int port) {
         this.id = id;
@@ -51,5 +51,9 @@ class KNode {
     @Override
     public String toString() {
         return NetUtils.IPtoString(ip) + ":" + port + " " + KeysManager.hexString(id);
+    }
+
+    public Client toClient() {
+        return new Client(this, myId, myPort);
     }
 }
