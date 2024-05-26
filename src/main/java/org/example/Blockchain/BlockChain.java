@@ -198,7 +198,7 @@ public class BlockChain {
 
             for (Transaction t : transactions) {
                 if (t.getClass() == Bid.class) {
-                    if (Arrays.equals(t.getSenderAddress(), t.getSenderAddress())) {
+                    if (Arrays.equals(t.getAuctionHash(), transaction.getAuctionHash())) {
                         Main.alert(key, t); // alerts the wallet(key) that a new transaction that might interest him has been made
                         break;
                     }
