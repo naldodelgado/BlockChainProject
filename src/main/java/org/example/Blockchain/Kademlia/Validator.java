@@ -2,6 +2,8 @@ package org.example.Blockchain.Kademlia;
 
 import kademlia_public_ledger.*;
 
+import java.lang.Boolean;
+
 public class Validator {
 
     public static boolean validate(Sender request) {
@@ -98,5 +100,9 @@ public class Validator {
         }
 
         return false;
+    }
+
+    public static Boolean validate(kademlia_public_ledger.Boolean aBoolean) {
+        return true;
     }
 }
