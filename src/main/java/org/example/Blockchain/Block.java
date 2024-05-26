@@ -21,7 +21,6 @@ public class Block implements Serializable {
     private final long timestamp; // Timestamp of when this block was created
     private int nonce; // Nonce used in mining - this can only be set once. IMMUTABLE
     private byte[] merkleRoot = new byte[32]; // Merkle root of the transactions in this block
-    static int numZeros = 0; // Number of zeros required at the start of the hash
 
     // constructor genesis block
     public Block (){
@@ -70,14 +69,17 @@ public class Block implements Serializable {
 
     public boolean isNonceValid() {
         int i;
-        for (i = 0; i < numZeros; i++) {
+        for (i = 0; i < BlockChain.numZeros; i++) {
             if (hash[i] != 0) {
                 break;
             }
         }
 
-        return i >= numZeros;
+        return i >= BlockChain.numZeros;
     }
+
+
+
 
     // Getters and setters
     public byte[] getHash() {

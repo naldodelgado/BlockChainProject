@@ -28,6 +28,14 @@ public class BlockChain {
     private final Block genesisBlock;
     private final Logger logger = Logger.getLogger(BlockChain.class.getName());
     public static Map<byte[], List<Wallet>> mapPkTransaction = new HashMap<>();
+    static int numZeros = 0; // Number of zeros required at the start of the hash
+
+    // List of timestamps of the last N blocks
+    private static final LinkedList<Long> lastBlockTimestamps = new LinkedList<>();
+    // Number of last blocks to consider when adjusting difficulty
+    private static final int N = 10;
+    // Target time to mine a block in milliseconds
+    private static final long TARGET_TIME = 60000; // 1 minute
 
     public BlockChain() {
         try {
@@ -70,6 +78,42 @@ public class BlockChain {
         startMining();
 
         this.kademlia.propagate(block);
+    }
+
+    public static void adjustDifficulty(long timestamp) {
+        // Add timestamp of this block to the list
+        lastBlockTimestamps.addLast(timestamp);
+        // If list size exceeds N, remove the oldest timestamp
+        if (lastBlockTimestamps.size() > N) {
+            lastBlockTimestamps.removeFirst();
+        }
+
+        // If we have mined N blocks, adjust difficulty
+        if (lastBlockTimestamps.size() == N) {
+            // Calculate average time to mine a block
+            long totalDuration = 0;
+            for (int i = 1; i < lastBlockTimestamps.size(); i++) {
+                long duration = lastBlockTimestamps.get(i) - lastBlockTimestamps.get(i - 1);
+                totalDuration += duration;
+            }
+            long averageTime = totalDuration / (N - 1);
+
+            // Adjust difficulty based on average time
+            if (averageTime < TARGET_TIME) {
+                increaseDifficulty();
+            } else {
+                decreaseDifficulty();
+            }
+        }
+    }
+
+    public static void increaseDifficulty() {
+        numZeros++;
+    }
+
+    public static void decreaseDifficulty() {
+        if(numZeros > 0)
+            numZeros--;
     }
 
     private void startMining() {

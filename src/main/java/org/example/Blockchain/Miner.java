@@ -1,5 +1,6 @@
 package org.example.Blockchain;
 
+import java.util.Date;
 import java.util.logging.Logger;
 
 class Miner implements Runnable {
@@ -33,6 +34,7 @@ class Miner implements Runnable {
 
         if(block.isNonceValid()){
             blockChain.propagateBlock(block);
+            BlockChain.adjustDifficulty( new Date().getTime());
         }
     }
 
