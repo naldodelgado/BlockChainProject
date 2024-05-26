@@ -207,6 +207,8 @@ public class BlockChain {
             transactions.removeAll(block.getTransactions());
         }
 
+        adjustDifficulty(block.getTimestamp());
+
         startMining();
 
         return true;
