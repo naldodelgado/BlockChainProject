@@ -1,12 +1,12 @@
 package org.example.Blockchain;
 
+import kademlia_public_ledger.Type;
 import org.apache.commons.lang3.tuple.Pair;
 import org.example.Blockchain.Kademlia.Kademlia;
 import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Client.Wallet;
-import org.example.Main;
 import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
 
@@ -27,7 +27,7 @@ public class BlockChain {
     private List<Pair<Auction, Bid>> activeBids;
     private final Block genesisBlock;
     private final Logger logger = Logger.getLogger(BlockChain.class.getName());
-    public static Map<Transaction, List<Wallet>> mapPkTransaction = new HashMap<>();
+    public static Map<byte[], List<Wallet>> mapPkTransaction = new HashMap<>();
 
     public BlockChain() {
         try {
@@ -194,8 +194,8 @@ public class BlockChain {
         }
 
         //check if the current transaction is present on mapPkTransaction and if present I want to alert the wallet that a new auction has been made there
-        if (mapPkTransaction.containsKey(transaction)) {
-            for (Wallet w : mapPkTransaction.get(transaction)) {
+        if (mapPkTransaction.containsKey(transaction.getAuctionHash()) && transaction.getType() == Type.bid) {
+            for (Wallet w : mapPkTransaction.get(transaction.getAuctionHash())) {
                 w.alert(transaction);
             }
         }
@@ -206,11 +206,11 @@ public class BlockChain {
     }
 
     public static void subscribe(Wallet wallet, Auction auction) {
-        if(mapPkTransaction.get(auction) == null) {
+        if (mapPkTransaction.get(auction.getHash()) == null) {
             List<Wallet> w = new ArrayList<>();
             w.add(wallet);
-            mapPkTransaction.put(auction, w);
+            mapPkTransaction.put(auction.getHash(), w);
         }
-        mapPkTransaction.get(auction).add(wallet);
+        mapPkTransaction.get(auction.getHash()).add(wallet);
     }
 }
