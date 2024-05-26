@@ -128,6 +128,11 @@ public class Auction extends Transaction implements Serializable{
     }
 
     @Override
+    public byte[] getSenderAddress() {
+        return sellerPublicKey;
+    }
+
+    @Override
     public String toString() {
         return "Auction{" +
                 "itemID=" + KeysManager.hexString(ItemID) + "\n\t" +
@@ -138,6 +143,11 @@ public class Auction extends Transaction implements Serializable{
                 "hash=" + KeysManager.hexString(hash) + "\n\t" +
                 "signature=" + KeysManager.hexString(signature) + "\n" +
                 '}';
+    }
+
+    @Override
+    public byte[] getAuctionHash() {
+        return hash;
     }
 
     @Override
