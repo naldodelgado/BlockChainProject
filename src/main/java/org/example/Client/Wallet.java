@@ -10,6 +10,7 @@ import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -81,6 +82,7 @@ public class Wallet implements Serializable {
         Auction temp = new Auction(idItem, minAmount, minIncrement, timeout, this);
         blockChain.addTransaction(temp);
         auctions.add(Pair.of(temp, new ArrayList<>()));
+        BlockChain.subscribe(this, temp);
         return temp;
     }
 
@@ -95,5 +97,17 @@ public class Wallet implements Serializable {
 
     public PublicKey getPublicKey() {
         return publicKey;
+    }
+
+    public void alert(Transaction transaction) {
+        if (transaction instanceof Bid) {
+            Bid bid = (Bid) transaction;
+            for (Pair<Auction, List<Bid>> auction : auctions) {
+                if (Arrays.equals(auction.getLeft().getAuctionHash(), bid.getAuctionHash())) {
+                    auction.getRight().add(bid);
+                    break;
+                }
+            }
+        }
     }
 }

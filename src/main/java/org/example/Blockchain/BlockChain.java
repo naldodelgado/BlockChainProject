@@ -5,6 +5,7 @@ import org.example.Blockchain.Kademlia.Kademlia;
 import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
+import org.example.Client.Wallet;
 import org.example.Main;
 import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
@@ -26,6 +27,7 @@ public class BlockChain {
     private List<Pair<Auction, Bid>> activeBids;
     private final Block genesisBlock;
     private final Logger logger = Logger.getLogger(BlockChain.class.getName());
+    public static Map<Transaction, List<Wallet>> mapPkTransaction = new HashMap<>();
 
     public BlockChain() {
         try {
@@ -192,17 +194,9 @@ public class BlockChain {
         }
 
         //check if the current transaction is present on mapPkTransaction and if present I want to alert the wallet that a new auction has been made there
-        for (Map.Entry<byte[], List<Transaction>> entry : Main.mapPkTransaction.entrySet()) {
-            byte[] key = entry.getKey();
-            List<Transaction> transactions = entry.getValue();
-
-            for (Transaction t : transactions) {
-                if (t.getClass() == Bid.class) {
-                    if (Arrays.equals(t.getAuctionHash(), transaction.getAuctionHash())) {
-                        Main.alert(key, t); // alerts the wallet(key) that a new transaction that might interest him has been made
-                        break;
-                    }
-                }
+        if (mapPkTransaction.containsKey(transaction)) {
+            for (Wallet w : mapPkTransaction.get(transaction)) {
+                w.alert(transaction);
             }
         }
 
@@ -211,6 +205,12 @@ public class BlockChain {
         return true;
     }
 
-
-
+    public static void subscribe(Wallet wallet, Auction auction) {
+        if(mapPkTransaction.get(auction) == null) {
+            List<Wallet> w = new ArrayList<>();
+            w.add(wallet);
+            mapPkTransaction.put(auction, w);
+        }
+        mapPkTransaction.get(auction).add(wallet);
+    }
 }
