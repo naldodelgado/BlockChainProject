@@ -109,7 +109,7 @@ public class Bid extends Transaction implements Serializable {
 
         // TODO: verify that the timestamp is bigger than the timestamp of its auction
         //       verify that its auction exists
-        //       verify that the amount is bigger that the last bid plus the min bid amount
+        //       verify that the amount is bigger than the last bid plus the min bid amount
         return Arrays.equals(this.transactionId, data) && KeysManager.verifySignature(signature, data, senderAddress);
     }
 

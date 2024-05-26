@@ -119,18 +119,18 @@ public class BlockChain {
 
                 Optional<Block> b = kademlia.getBlock(block.getPreviousHash());
                 if (b.isEmpty() || block.getNumberOfOrder() - b.get().getNumberOfOrder() != 1) return false;
-                if (addBlock(b.get())) return false;
+                if (!addBlock(b.get())) return false;
 
-                index = block.getNumberOfOrder()-1 - blocks.get(0).getNumberOfOrder();
+                index = block.getNumberOfOrder() - 1 - blocks.get(0).getNumberOfOrder();
             }
 
             if (!Arrays.equals(block.getPreviousHash(), blocks.get(index).getHash())) {
                 return false;
             }
 
-            if (index < blocks.size() - 1) {
-                //TODO I need to remove the blocks after the one that changed
+            if (index + 1 < blocks.size() - 1) {
                 blocks.set(index + 1, block);
+                removeFromIndex(blocks, index + 2);
             } else {
                 blocks.add(block);
                 blocks.remove(0);
@@ -166,6 +166,14 @@ public class BlockChain {
         startMining();
 
         return true;
+    }
+
+    public static void removeFromIndex(List<?> list, int index) {
+        if (list == null || index < 0 || index >= list.size()) {
+            throw new IndexOutOfBoundsException("Index is out of range");
+        }
+
+        list.subList(index, list.size()).clear();
     }
 
     public void addTransaction(Transaction transaction) {

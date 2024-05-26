@@ -178,7 +178,7 @@ class RouteTable {
 
         if (a.isEmpty()) {
             logger.info(String.format("Node %s %s did not respond to ping", IPtoString(node.getIp()), KeysManager.hexString(node.getId())));
-            kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId())); //TODO: maybe try to update the kBucket
+            kBuckets[index].removeIf(pair -> Arrays.equals(pair.getLeft().getId(), node.getId()));
             return;
         }
 
