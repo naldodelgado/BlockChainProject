@@ -2,6 +2,7 @@ package org.example;
 
 import org.example.Blockchain.BlockChain;
 import org.example.Client.Auction;
+import org.example.Client.Bid;
 import org.example.Client.Transaction;
 import org.example.Client.Wallet;
 import org.example.Utils.KeysManager;
@@ -10,6 +11,7 @@ import org.example.poisson.PoissonProcess;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.PublicKey;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -24,7 +26,7 @@ public class Main {
     static ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     static Logger logger = Logger.getLogger(Main.class.getName());
     static BlockChain blockChain = new BlockChain();
-    static Map<Wallet, List<Transaction>> mapPkTransaction = new HashMap<>();
+    public static Map<byte[], List<Transaction>> mapPkTransaction = new HashMap<>();
 
     public static void main(String[] args) throws UnknownHostException {
         logger.setFilter(new LogFilter());
@@ -59,11 +61,14 @@ public class Main {
         List<Transaction> transactions = mapPkTransaction.getOrDefault(wallet, new ArrayList<>());
         // returns a empty list if there isn't a transaction list associated to the wallet
         transactions.add(auction);
-        mapPkTransaction.put(wallet, transactions);
+        mapPkTransaction.put(wallet.getPublicKey().getEncoded(), transactions);
 
         long time = (long) (auctionTimer.timeForNextEvent() * 1000);
         logger.info(String.format("scheduled auction in %d seconds", time));
         executor.schedule(Main::auctionStarter, time, TimeUnit.SECONDS);
     }
 
+    public static void alert(byte[] key, Transaction transaction) {
+        logger.info("letting wallet " + Arrays.toString(key) + "know that a new bid " + transaction + "has been placed on his auction" + Arrays.toString(transaction.getAuctionHash()));
+    }
 }

@@ -5,16 +5,14 @@ import org.example.Blockchain.Kademlia.Kademlia;
 import org.example.Client.Auction;
 import org.example.Client.Bid;
 import org.example.Client.Transaction;
+import org.example.Main;
 import org.example.Utils.FileSystem;
 import org.example.Utils.KeysManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
@@ -193,10 +191,26 @@ public class BlockChain {
             transactions.add(transaction);
         }
 
+        //check if the current transaction is present on mapPkTransaction and if present I want to alert the wallet that a new auction has been made there
+        for (Map.Entry<byte[], List<Transaction>> entry : Main.mapPkTransaction.entrySet()) {
+            byte[] key = entry.getKey();
+            List<Transaction> transactions = entry.getValue();
+
+            for (Transaction t : transactions) {
+                if (t.getClass() == Bid.class) {
+                    if (Arrays.equals(t.getSenderAddress(), t.getSenderAddress())) {
+                        Main.alert(key, t); // alerts the wallet(key) that a new transaction that might interest him has been made
+                        break;
+                    }
+                }
+            }
+        }
+
         if (miner == null) startMining();
 
         return true;
     }
+
 
 
 }

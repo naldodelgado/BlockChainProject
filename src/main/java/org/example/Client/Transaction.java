@@ -43,7 +43,10 @@ public abstract class Transaction {
 
     public abstract byte[] hash();
 
+    public abstract byte[] getSenderAddress();
+
     @Override
     public abstract String toString();
 
+    public abstract byte[] getAuctionHash();
 }

@@ -180,6 +180,9 @@ public class Bid extends Transaction implements Serializable {
     public long getTimestamp() {
         return timestamp;
     }
+    public byte[] getSenderAddress() {
+        return senderAddress;
+    }
 
     @Override
     public boolean equals(Object obj) {
